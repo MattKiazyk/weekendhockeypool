@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">Weekend Hockey shield</title>
+  <defs>
+    <linearGradient id="shield" x1="0" x2="1" y1="0" y2="1">
+      <stop stop-color="#173d6d"/>
+      <stop offset="1" stop-color="#09172a"/>
+    </linearGradient>
+  </defs>
+  <path d="M8 4h48l4 10v23c0 10-10 18-28 24C14 55 4 47 4 37V14z" fill="url(#shield)" stroke="#58a1ff" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M12 15h40" fill="none" stroke="#8ec1ff" stroke-opacity=".65" stroke-width="2"/>
+  <path d="m13 21 10 23 9-15 9 15 10-23" fill="none" stroke="#f5f9ff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <ellipse cx="32" cy="51" rx="9" ry="3.5" fill="#f5c84a"/>
+  <path d="M25 51h14" stroke="#8d6818" stroke-width="1.5"/>
+</svg>
