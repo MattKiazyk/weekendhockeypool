@@ -2985,7 +2985,27 @@ a {
   outline-offset: 2px;
 }
 .upcoming-callout {
-  border-color: #395a82;
+  margin-bottom: 26px;
+  padding: 22px 25px;
+  background: linear-gradient(135deg, #ffdf78, #f2b83f);
+  border: 1px solid #ffe393;
+  border-left: 6px solid #fff4c7;
+  box-shadow: 0 8px 25px rgb(0 0 0 / 22%);
+  color: #14253c;
+}
+.upcoming-callout > div:first-child {
+  gap: 7px;
+}
+.upcoming-callout b {
+  font-family: 'Barlow Condensed', Impact, sans-serif;
+  font-size: 27px;
+  line-height: 1;
+}
+.upcoming-callout span {
+  color: #24344a;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.45;
 }
 .upcoming-note {
   color: #91bcff;
