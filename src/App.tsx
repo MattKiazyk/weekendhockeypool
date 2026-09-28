@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import About from './About'
 import AdminPanel from './components/AdminPanel'
 import PickSheet from './components/PickSheet'
+import PicksIntro from './components/PicksIntro'
 import { SeasonResults, WeekendResults } from './components/Results'
 import SaveToast, { type SaveFeedback } from './components/SaveToast'
 import SiteHeader from './components/SiteHeader'
@@ -162,6 +163,7 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
       )}
       <SiteHeader session={session} view={view} onNavigate={navigateView} />
       <main id="top" className="page-content">
+        <PicksIntro active={view === 'picks'} onAbout={() => navigateView('about')} />
         {view === 'about' ? (
           <About demo={demo} onPlay={() => navigateView('picks')} />
         ) : (

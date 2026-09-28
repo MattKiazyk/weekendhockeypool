@@ -56,6 +56,7 @@ Enable usernames in Clerk. Existing accounts without one can choose a username f
 
 ## Rules and data flow
 
+- First-time visitors see a compact how-to at the top of Picks. Choosing **Got it** hides it on future visits in that browser using the `hockey-pool-intro-dismissed` localStorage key; clear that key to show it again. If storage is blocked, dismissal lasts for the current page session. The full rules remain available in About.
 - The slate includes only NHL regular-season games (`gameType: 2`) starting Friday through Sunday in **America/New_York**. The next Friday is used on weekdays; Saturday and Sunday belong to the preceding Friday.
 - Every game needs one winner and a unique confidence value from 1 through the game count. Choosing a number already assigned to another ranked game swaps the two numbers.
 - Entries close at the earliest game start. Both the API and D1 triggers enforce the deadline. Entry replacement is a single database batch so a failed write preserves the previous entry.
