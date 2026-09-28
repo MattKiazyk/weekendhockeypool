@@ -332,8 +332,8 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
         )}
       </main>
       <footer className="site-footer">
-        <span>WEEKEND HOCKEY POOL</span>
-        <span>A SIMPLE HOCKEY POOL</span>
+        <span>WEEKEND POOLS</span>
+        <span>WEEKEND CONFIDENCE POOLS</span>
         <span>NHL and PWHL schedules and scores · Eastern time</span>
         <span className="footer-disclaimer">
           For fun only · No real money involved · Not affiliated with or endorsed by the NHL or PWHL

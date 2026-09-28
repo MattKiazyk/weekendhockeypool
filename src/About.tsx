@@ -35,13 +35,13 @@ function About({ demo, onPlay }: AboutProps) {
         <div className="about-hero-inner">
           <span className="eyebrow">
             <span className="live-dot" /> THE PLAYBOOK <span className="eyebrow-divider">/</span>{' '}
-            WEEKEND HOCKEY POOL
+            WEEKEND POOLS
           </span>
           <h1>
             MAKE YOUR <em>CALL.</em>
           </h1>
           <p>
-            Three days of hockey in each league. Enter NHL, PWHL, or both with one entry per league
+            Three days of games in each league. Enter NHL, PWHL, or both with one entry per league
             each weekend. Give every pick a unique confidence number.
           </p>
           <button type="button" className="about-cta" onClick={onPlay}>
@@ -65,7 +65,7 @@ function About({ demo, onPlay }: AboutProps) {
         <div className="about-hero-rink" aria-hidden="true">
           <div className="about-rink-ring ring-one" />
           <div className="about-rink-ring ring-two" />
-          <div className="about-rink-center">WH</div>
+          <div className="about-rink-center">WP</div>
         </div>
       </section>
 
@@ -185,7 +185,7 @@ function About({ demo, onPlay }: AboutProps) {
 
         <div className="about-bottom-cta">
           <div>
-            <span className="section-kicker">READY FOR PUCK DROP?</span>
+            <span className="section-kicker">READY FOR THE FIRST GAME?</span>
             <h2>MAKE YOUR PICKS.</h2>
           </div>
           <button type="button" onClick={onPlay}>

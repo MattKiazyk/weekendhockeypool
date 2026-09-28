@@ -29,7 +29,7 @@ export default function SiteHeader({
           />
           <span>
             <b>
-              WEEKEND <span className="brand-blue">HOCKEY POOL</span>
+              WEEKEND <span className="brand-blue">POOLS</span>
             </b>
           </span>
         </a>

@@ -3,7 +3,11 @@
   "name": "weekend-hockey-pool",
   "main": "worker/index.ts",
   "compatibility_date": "2026-09-27",
-  "routes": [{ "pattern": "hockey.mattkiazyk.com", "custom_domain": true }],
+  // Keep the existing Worker and old hostname; the edge redirect is configured separately.
+  "routes": [
+    { "pattern": "pool.mattkiazyk.com", "custom_domain": true },
+    { "pattern": "hockey.mattkiazyk.com", "custom_domain": true },
+  ],
   "assets": { "not_found_handling": "single-page-application" },
   "d1_databases": [
     {

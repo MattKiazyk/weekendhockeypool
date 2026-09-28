@@ -1,6 +1,6 @@
-# Weekend Hockey Pool
+# Weekend Pools
 
-An NHL and PWHL regular-season confidence pool for Friday–Sunday games, built with React, Vite, a Cloudflare Worker, D1, and Clerk. Each person can submit one entry per league per weekend. Production: [hockey.mattkiazyk.com](https://hockey.mattkiazyk.com).
+Weekend confidence pools, currently supporting NHL and PWHL regular-season games from Friday through Sunday, built with React, Vite, a Cloudflare Worker, D1, and Clerk. Each person can submit one entry per league per weekend. Canonical production URL: [pool.mattkiazyk.com](https://pool.mattkiazyk.com). Moving the live site and redirecting the old hockey address requires the production cutover below; changing this repository alone does not activate the new domain.
 
 ## Local development
 
@@ -15,7 +15,7 @@ npm run dev
 
 Open the Vite URL, normally `http://127.0.0.1:5173`. Without a Clerk publishable key, development shows an interactive NHL preview using the checked-in October 2–4, 2026 schedule. The PWHL tab shows its coming-soon state. The yellow bar switches the NHL preview between open, locked, and final states. Preview entries live only in that browser's `hockey-pool-demo-entry` localStorage key. Clear that key to reset the entry. Preview mode never submits entries to D1.
 
-For the real authentication flow, copy the configuration templates and fill in development credentials from the Clerk **Hockey** application:
+For the real authentication flow, copy the configuration templates and fill in development credentials from the existing Clerk application (originally **Hockey**, renamed **Weekend Pools** during cutover). Keep the same application and user IDs:
 
 ```sh
 cp .env.example .env
@@ -88,8 +88,48 @@ After UI changes, check desktop and mobile layouts, switch leagues, select and s
 
 ## Production
 
-`wrangler.jsonc` identifies the `hockey-pool` D1 database, `hockey.mattkiazyk.com` custom domain, and 15-minute cron. Configure matching Clerk production keys and the admin user on the Worker. Ensure Clerk allows the production origin.
+`wrangler.jsonc` prepares both `pool.mattkiazyk.com` and the retained `hockey.mattkiazyk.com` custom domains on the existing Worker, using the same D1 database and 15-minute cron. Configure matching Clerk production keys and the admin user on the Worker. Ensure Clerk allows the production origin.
+
+The npm package is `weekend-pools`, but the following compatibility identifiers intentionally retain their old names:
+
+- Worker: `weekend-hockey-pool`; keep its secrets, bindings, and single scheduled trigger.
+- D1: `hockey-pool`, ID `2ac78f44-5754-4419-84a1-86667857b63a`, binding `DB`; keep the local migration command targeting that database.
+- Browser storage: `hockey-pool-demo-entry` and `hockey-pool-intro-dismissed`.
+- GitHub repository: `MattKiazyk/weekendhockeypool`; the local checkout folder also stays unchanged.
+
+The rebrand changes no API contracts, pool rules, data, or schema and requires no database migration. Browser storage belongs to each origin, so it does not transfer to the new hostname. The intro may reappear and users may need to sign in again; saved server entries remain attached to the same Clerk user IDs.
 
 Before an authorized deployment, run the checks, apply any new D1 migrations to the remote database, and build with `VITE_CLERK_PUBLISHABLE_KEY` set to the production publishable key. Deploy with `npx wrangler deploy`. `public/.assetsignore` excludes Finder metadata from published assets. Build output lives under `dist/client` and `dist/weekend_hockey_pool`; it is generated and should not be edited or committed. Keep previously applied migrations unchanged; add a new numbered migration for schema changes.
+
+### Domain cutover: separate, explicitly requested production release
+
+1. **Prepare and record the current setup.** Run `npm run format` and `npm run check` with Node 24 and complete desktop/mobile preview verification. Confirm the current deployed version, D1 binding, cron, DNS, and Clerk production domain configuration. Retain the prior release and non-secret configuration for rollback. Schedule any authentication domain change away from entry deadlines. Do not create a replacement Worker, database, or Clerk application.
+2. **Prepare Clerk in the existing application.** Rename its display branding to **Weekend Pools**. Update home/application URLs, permitted origins, email links, and enabled social-login settings to `https://pool.mattkiazyk.com`. If the authentication domain itself must change, follow [Clerk's in-place domain migration](https://clerk.com/docs/guides/development/deployment/changing-domains), retain the existing root/subdomain scope, configure its DNS and certificates, and update enabled OAuth callbacks (and external JWT issuer/JWKS integrations, if any). Changing the Clerk domain generates a new publishable key: update `VITE_CLERK_PUBLISHABLE_KEY` in the production build environment and `CLERK_PUBLISHABLE_KEY` on the Worker together, then rebuild. Keep secrets out of browser variables and source control. DNS propagation can cause an authentication interruption; verify the real flow before redirecting visitors.
+3. **Deploy and verify the new hostname.** Build with the matching production Clerk key and deploy the existing Worker with both custom domains. Wait for `pool.mattkiazyk.com` DNS and TLS to become active, keeping the old hostname's proxied DNS and TLS coverage. Verify the new site, assets, public API responses, league switching, existing-account sign-in/sign-out, existing saved entries, deadline/privacy enforcement, and admin access. Preview and mocked tests do not establish that production Clerk works. Do not enable the redirect until these checks pass.
+4. **Update analytics and enable the edge redirect.** Keep measurement ID `G-911GHGNZ8V`. Rename the existing Google Analytics property/web stream to **Weekend Pools**, update its website URL, and verify events from the new hostname in Realtime; preserve the existing stream and history. See [Google Analytics settings](https://support.google.com/analytics/answer/9304776?hl=en). In the `mattkiazyk.com` Cloudflare zone, add the Single Redirect below without replacing unrelated rules. The rule runs at the edge for pages, static assets, and API requests; Wrangler's custom-domain configuration does not create it.
+
+   | Setting               | Value                                                          |
+   | --------------------- | -------------------------------------------------------------- |
+   | Name                  | Weekend Pools legacy domain                                    |
+   | Match expression      | `(http.host eq "hockey.mattkiazyk.com")`                       |
+   | Redirect type         | Dynamic                                                        |
+   | Target expression     | `concat("https://pool.mattkiazyk.com", http.request.uri.path)` |
+   | Status                | `308` (permanent, preserves request method)                    |
+   | Preserve query string | Enabled                                                        |
+
+   The host-only match handles both HTTP and HTTPS. Keep the old hostname proxied and covered by TLS. See [Cloudflare Single Redirect settings](https://developers.cloudflare.com/rules/url-forwarding/single-redirects/settings/). Existing open tabs may need a reload and sign-in on the new hostname; redirects do not migrate authentication or browser storage.
+
+5. **Verify the cutover and observe the next sync.** Confirm old URLs redirect to the same path and query on the new hostname without loops. Check the homepage, `/logo-concepts/04-center-ice-roundel.png`, `/api/week?league=nhl`, and `/?league=pwhl`. Check browser navigation after following old links, the canonical/social metadata, and both mobile and desktop layouts. Inspect Worker authentication/API errors and confirm the existing cron runs at the next 15-minute interval. Keep the old redirect indefinitely for bookmarks.
+
+   ```sh
+   curl -sSI http://hockey.mattkiazyk.com/
+   curl -sSI https://hockey.mattkiazyk.com/logo-concepts/04-center-ice-roundel.png
+   curl -sS -D - -o /dev/null 'https://hockey.mattkiazyk.com/api/week?league=nhl'
+   curl -sSI 'https://hockey.mattkiazyk.com/?league=pwhl'
+   curl -sSI https://pool.mattkiazyk.com/
+   curl -fsS 'https://pool.mattkiazyk.com/api/week?league=nhl'
+   ```
+
+**Rollback:** Before redirect activation, restore the previous app and matching Clerk configuration if needed. Once permanent redirects are enabled, keep `pool.mattkiazyk.com` operational because browsers may cache them. Roll back application code on the new hostname, rebuilding the previous version with the active Clerk publishable key and retaining both custom domains; do not redirect the new hostname back to the old one. No database rollback is needed for this rebrand.
 
 See [AGENTS.md](AGENTS.md) for maintenance guidance.
