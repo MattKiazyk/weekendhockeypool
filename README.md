@@ -1,6 +1,6 @@
 # Weekend Pools
 
-Weekend confidence pools, currently supporting NHL and PWHL regular-season games from Friday through Sunday, built with React, Vite, a Cloudflare Worker, D1, and Clerk. Each person can submit one entry per league per weekend. Canonical production URL: [pool.mattkiazyk.com](https://pool.mattkiazyk.com). Moving the live site and redirecting the old hockey address requires the production cutover below; changing this repository alone does not activate the new domain.
+Weekend confidence pools, currently supporting NHL and PWHL regular-season games from Friday through Sunday, built with React, Vite, a Cloudflare Worker, D1, and Clerk. Each person can submit one entry per league per weekend. Production runs at [pool.mattkiazyk.com](https://pool.mattkiazyk.com). The old hockey address permanently redirects there, preserving paths and query strings.
 
 ## Local development
 
@@ -88,7 +88,7 @@ After UI changes, check desktop and mobile layouts, switch leagues, select and s
 
 ## Production
 
-`wrangler.jsonc` prepares both `pool.mattkiazyk.com` and the retained `hockey.mattkiazyk.com` custom domains on the existing Worker, using the same D1 database and 15-minute cron. Configure matching Clerk production keys and the admin user on the Worker. Ensure Clerk allows the production origin.
+`wrangler.jsonc` configures both `pool.mattkiazyk.com` and the retained `hockey.mattkiazyk.com` custom domains on the existing Worker, using the same D1 database and 15-minute cron. Configure matching Clerk production keys and the admin user on the Worker. Ensure Clerk allows the production origin.
 
 The npm package is `weekend-pools`, but the following compatibility identifiers intentionally retain their old names:
 
@@ -101,7 +101,20 @@ The rebrand changes no API contracts, pool rules, data, or schema and requires n
 
 Before an authorized deployment, run the checks, apply any new D1 migrations to the remote database, and build with `VITE_CLERK_PUBLISHABLE_KEY` set to the production publishable key. Deploy with `npx wrangler deploy`. `public/.assetsignore` excludes Finder metadata from published assets. Build output lives under `dist/client` and `dist/weekend_hockey_pool`; it is generated and should not be edited or committed. Keep previously applied migrations unchanged; add a new numbered migration for schema changes.
 
-### Domain cutover: separate, explicitly requested production release
+### Production cutover record — September 28, 2026
+
+- Rebrand commit: `d96b78f`; deployed Worker version: `1caa2b26-c0ee-4f8d-ac31-7696be9440af`.
+- The existing Clerk production instance was migrated in place to `pool.mattkiazyk.com`, retaining its application, users, and secondary-domain scope. Its Frontend API is `clerk.pool.mattkiazyk.com`; its account portal is `accounts.pool.mattkiazyk.com`. All five DNS records are verified and both TLS certificates are issued. Get the current production publishable key from this same Clerk instance when building; the previous hockey-domain key is obsolete.
+- Clerk's application name and home URL are updated. Verification emails use the new sender domain and application name. No social/SSO connections are enabled, so no provider callbacks required changes.
+- The existing Google Analytics property and web stream are named **Weekend Pools**, with the new website URL and unchanged measurement ID `G-911GHGNZ8V`. Realtime received Weekend Pools page views.
+- Cloudflare Single Redirect **Weekend Pools legacy domain** is active with the exact settings below. HTTP/HTTPS root, asset, API, and league-query URLs returned 308 with their paths and queries intact; following the API redirect reached the new host in one hop.
+- Real existing-account sign-in, saved-entry reload, admin visibility, and sign-out were verified on the new domain. Public NHL/PWHL and combined season APIs responded successfully; protected endpoints reject unauthenticated requests. No database migration was required.
+- The existing `*/15 * * * *` scheduled handler completed successfully at **16:00:35 UTC** after cutover, with no logged errors or exceptions. Live browser and Worker API checks also showed no errors.
+- The previous Worker version is `e0845c50-d976-4ccb-bdc8-f11946aa31ff`. Use it as a code reference for rollback, following the matching-key/new-hostname procedure below; a direct restoration of its old Clerk key would break authentication.
+
+### Domain cutover procedure
+
+Future deployments and service configuration changes still require an explicit production release request. The following procedure records the cutover and remains the checklist for repeating it safely.
 
 1. **Prepare and record the current setup.** Run `npm run format` and `npm run check` with Node 24 and complete desktop/mobile preview verification. Confirm the current deployed version, D1 binding, cron, DNS, and Clerk production domain configuration. Retain the prior release and non-secret configuration for rollback. Schedule any authentication domain change away from entry deadlines. Do not create a replacement Worker, database, or Clerk application.
 2. **Prepare Clerk in the existing application.** Rename its display branding to **Weekend Pools**. Update home/application URLs, permitted origins, email links, and enabled social-login settings to `https://pool.mattkiazyk.com`. If the authentication domain itself must change, follow [Clerk's in-place domain migration](https://clerk.com/docs/guides/development/deployment/changing-domains), retain the existing root/subdomain scope, configure its DNS and certificates, and update enabled OAuth callbacks (and external JWT issuer/JWKS integrations, if any). Changing the Clerk domain generates a new publishable key: update `VITE_CLERK_PUBLISHABLE_KEY` in the production build environment and `CLERK_PUBLISHABLE_KEY` on the Worker together, then rebuild. Keep secrets out of browser variables and source control. DNS propagation can cause an authentication interruption; verify the real flow before redirecting visitors.
