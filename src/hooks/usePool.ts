@@ -3,7 +3,11 @@ import { emptyPool, fetchJson, sendJson, type PoolData } from '../lib/api'
 import { getDemoData, readDemoEntry, saveDemoEntry } from '../lib/demo'
 import {
   hasEntryDeadlinePassed,
+  seasonFor,
+  weekendStartAt,
+  type CombinedStanding,
   type Entry,
+  type LeagueId,
   type Pick,
   type PublicPick,
   type Standing,
@@ -15,12 +19,14 @@ import type { PoolSession } from '../lib/session'
 
 export function usePool(
   session: PoolSession,
+  league: LeagueId,
   demo: boolean,
   stage: WeekendStatus,
   showEntrants: boolean,
 ) {
   const { signedIn, userId, username, getToken } = session
   const [data, setData] = useState<PoolData>(emptyPool)
+  const [dataLeague, setDataLeague] = useState<LeagueId>(league)
   const [draft, setDraft] = useState<Pick[]>([])
   const [selectedWeek, setSelectedWeek] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
@@ -35,10 +41,10 @@ export function usePool(
 
   useEffect(() => {
     if (!demo) return
-    const entry = signedIn ? readDemoEntry() : null
+    const entry = signedIn && league === 'nhl' ? readDemoEntry() : null
     setData({ ...emptyPool, entry })
     setDraft(entry?.picks ?? [])
-  }, [demo, signedIn])
+  }, [demo, league, signedIn])
 
   useEffect(() => {
     if (demo) return
@@ -49,52 +55,84 @@ export function usePool(
       setError('')
       // Do not carry a previous player's entry into a failed account/week load.
       setData(emptyPool)
+      setDataLeague(league)
       setDraft([])
       try {
-        const suffix = selectedWeek ? `?start=${selectedWeek}` : ''
+        const suffix = `?league=${league}${selectedWeek ? `&start=${selectedWeek}` : ''}`
         const [{ week }, token] = await Promise.all([
           fetchJson<{ week: Weekend | null }>(`/api/week${suffix}`, null, options),
           signedIn ? getToken() : Promise.resolve(null),
         ])
         if (controller.signal.aborted) return
         // Loading the current week can publish a new slate, so list it afterward.
-        const weeksRequest = fetchJson<{ weeks: WeekListing[] }>('/api/weeks', null, options)
+        const weeksRequest = fetchJson<{ weeks: WeekListing[] }>(
+          `/api/weeks?league=${league}`,
+          null,
+          options,
+        )
+        const seasonId = week?.season ?? seasonFor(selectedWeek ?? weekendStartAt(Date.now()))
+        const seasonRequest = fetchJson<{ standings: Standing[] }>(
+          `/api/season?league=${league}&season=${seasonId}`,
+          null,
+          options,
+        )
+        const combinedRequest = fetchJson<{ standings: CombinedStanding[] }>(
+          `/api/season?league=all&season=${seasonId}`,
+          null,
+          options,
+        )
         if (!week) {
-          const { weeks } = await weeksRequest
+          const [{ weeks }, season, combined] = await Promise.all([
+            weeksRequest,
+            seasonRequest,
+            combinedRequest,
+          ])
           if (controller.signal.aborted) return
-          setData({ ...emptyPool, weeks })
+          setData({
+            ...emptyPool,
+            weeks,
+            seasonStandings: season.standings,
+            combinedStandings: combined.standings,
+          })
           return
         }
-        const [{ weeks }, { standings }, season, { entrants }, own, revealed] = await Promise.all([
-          weeksRequest,
-          fetchJson<{ standings: Standing[] }>(
-            `/api/standings?start=${week.startDate}`,
-            null,
-            options,
-          ),
-          fetchJson<{ standings: Standing[] }>(`/api/season?season=${week.season}`, null, options),
-          fetchJson<{ entrants: string[] }>(`/api/entrants?start=${week.startDate}`, null, options),
-          token
-            ? fetchJson<{ entry: Entry | null }>(
-                `/api/entry?start=${week.startDate}`,
-                token,
-                options,
-              )
-            : { entry: null },
-          token && hasEntryDeadlinePassed(week)
-            ? fetchJson<{ picks: PublicPick[] }>(
-                `/api/picks?start=${week.startDate}`,
-                token,
-                options,
-              )
-            : { picks: [] },
-        ])
+        const [{ weeks }, { standings }, season, combined, { entrants }, own, revealed] =
+          await Promise.all([
+            weeksRequest,
+            fetchJson<{ standings: Standing[] }>(
+              `/api/standings?league=${league}&start=${week.startDate}`,
+              null,
+              options,
+            ),
+            seasonRequest,
+            combinedRequest,
+            fetchJson<{ entrants: string[] }>(
+              `/api/entrants?league=${league}&start=${week.startDate}`,
+              null,
+              options,
+            ),
+            token
+              ? fetchJson<{ entry: Entry | null }>(
+                  `/api/entry?league=${league}&start=${week.startDate}`,
+                  token,
+                  options,
+                )
+              : { entry: null },
+            token && hasEntryDeadlinePassed(week)
+              ? fetchJson<{ picks: PublicPick[] }>(
+                  `/api/picks?league=${league}&start=${week.startDate}`,
+                  token,
+                  options,
+                )
+              : { picks: [] },
+          ])
         if (controller.signal.aborted) return
         setData({
           week,
           weeks,
           standings,
           seasonStandings: season.standings,
+          combinedStandings: combined.standings,
           entrants,
           entry: own.entry,
           publicPicks: revealed.picks,
@@ -109,7 +147,7 @@ export function usePool(
     }
     void load()
     return () => controller.abort()
-  }, [demo, selectedWeek, signedIn, userId, getToken, reloadKey])
+  }, [demo, league, selectedWeek, signedIn, userId, getToken, reloadKey])
 
   const deadlinePassed =
     !demo && data.week?.status === 'open' && hasEntryDeadlinePassed(data.week, clock)
@@ -125,7 +163,7 @@ export function usePool(
     async function refreshEntrants() {
       try {
         const { entrants } = await fetchJson<{ entrants: string[] }>(
-          `/api/entrants?start=${startDate}`,
+          `/api/entrants?league=${league}&start=${startDate}`,
           null,
           { signal: controller.signal },
         )
@@ -139,9 +177,13 @@ export function usePool(
       controller.abort()
       window.clearInterval(timer)
     }
-  }, [pollEntrants, startDate])
+  }, [pollEntrants, startDate, league])
 
-  const visibleData = demo ? getDemoData(stage, data.entry, username) : data
+  const visibleData = demo
+    ? getDemoData(league, stage, data.entry, username)
+    : dataLeague === league
+      ? data
+      : emptyPool
 
   async function saveEntry(): Promise<void> {
     if (!visibleData.week) return
@@ -155,6 +197,7 @@ export function usePool(
       saveDemoEntry(saved)
     } else {
       const result = await sendJson<{ updatedAt: string }>('/api/entry', await getToken(), 'PUT', {
+        league,
         startDate: visibleData.week.startDate,
         picks: draft,
       })
@@ -174,7 +217,11 @@ export function usePool(
     path: string,
     payload: Record<string, unknown>,
   ): Promise<void> {
-    await sendJson(`/api/admin/${path}`, await getToken(), 'POST', { startDate, ...payload })
+    await sendJson(`/api/admin/${path}`, await getToken(), 'POST', {
+      league,
+      startDate,
+      ...payload,
+    })
     setReloadKey((value) => value + 1)
   }
 
@@ -184,7 +231,7 @@ export function usePool(
     setDraft,
     selectedWeek,
     setSelectedWeek,
-    loading,
+    loading: loading || (!demo && dataLeague !== league),
     error,
     setError,
     clock,

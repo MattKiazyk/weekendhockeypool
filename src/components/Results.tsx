@@ -1,5 +1,12 @@
-import type { Weekend, WeekendStatus, Standing, PublicPick } from '../lib/pool'
-import { StandingsList, EntrantsBoard } from './Standings'
+import type {
+  CombinedStanding,
+  LeagueId,
+  Weekend,
+  WeekendStatus,
+  Standing,
+  PublicPick,
+} from '../lib/pool'
+import { CombinedStandingsList, StandingsList, EntrantsBoard } from './Standings'
 
 interface WeekendResultsProps {
   week: Weekend
@@ -79,33 +86,65 @@ export function WeekendResults({
   )
 }
 export function SeasonResults({
-  week,
+  season,
+  league,
+  scope,
+  onScopeChange,
   demo,
   standings,
+  combinedStandings,
 }: {
-  week: Weekend
+  season: string
+  league: LeagueId
+  scope: 'league' | 'all'
+  onScopeChange: (scope: 'league' | 'all') => void
   demo: boolean
   standings: Standing[]
+  combinedStandings: CombinedStanding[]
 }) {
   return (
     <div className="results-layout">
       <div className="results-main">
         <div className="results-intro">
-          <span className="card-kicker">{demo ? 'SAMPLE' : week.season} REGULAR SEASON</span>
+          <span className="card-kicker">{demo ? 'SAMPLE' : season} REGULAR SEASON</span>
           <h3>EVERY WEEKEND COUNTS.</h3>
-          <p>Points from finalized regular-season weekends add up here.</p>
+          <p>
+            Points from finalized regular-season weekends add up here. Players can enter either
+            league or both.
+          </p>
+          <div className="season-scope" aria-label="Season standings scope">
+            <button
+              className={scope === 'league' ? 'active' : ''}
+              onClick={() => onScopeChange('league')}
+            >
+              {league.toUpperCase()}
+            </button>
+            <button
+              className={scope === 'all' ? 'active' : ''}
+              onClick={() => onScopeChange('all')}
+            >
+              All leagues
+            </button>
+          </div>
         </div>
-        <StandingsList
-          rows={standings}
-          emptyText="The season table starts after the first completed weekend."
-        />
+        {scope === 'all' ? (
+          <CombinedStandingsList rows={combinedStandings} />
+        ) : (
+          <StandingsList
+            rows={standings}
+            emptyText="The season table starts after the first completed weekend."
+          />
+        )}
       </div>
       <aside className="results-aside">
         <span className="card-kicker">THE RACE</span>
-        <strong>{week.season}</strong>
-        <span>REGULAR SEASON</span>
+        <strong>{season}</strong>
+        <span>{scope === 'all' ? 'ALL LEAGUES' : `${league.toUpperCase()} REGULAR SEASON`}</span>
         <div className="board-divider" />
-        <p>Tied totals share the same rank.</p>
+        <p>
+          Each league adds its finalized points right away. A dash means no finalized entry in that
+          league. Tied totals share the same rank.
+        </p>
       </aside>
     </div>
   )

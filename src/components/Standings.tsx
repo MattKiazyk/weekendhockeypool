@@ -1,4 +1,4 @@
-import type { Game, PublicPick, Standing } from '../lib/pool'
+import type { CombinedStanding, Game, PublicPick, Standing } from '../lib/pool'
 
 export function StandingsList({ rows, emptyText }: { rows: Standing[]; emptyText: string }) {
   if (!rows.length)
@@ -23,6 +23,38 @@ export function StandingsList({ rows, emptyText }: { rows: Standing[]; emptyText
             <strong>{row.username}</strong>
           </div>
           <span>{row.correct}</span>
+          <b>{row.points}</b>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+export function CombinedStandingsList({ rows }: { rows: CombinedStanding[] }) {
+  if (!rows.length)
+    return (
+      <div className="empty-state">
+        <span className="empty-icon">▥</span>
+        <h3>Nothing on the board yet</h3>
+        <p>Combined totals start when the first league weekend is final.</p>
+      </div>
+    )
+  return (
+    <div className="standing-list combined-standing-list">
+      <div className="standing-head">
+        <span>RANK / PLAYER</span>
+        <span>NHL</span>
+        <span>PWHL</span>
+        <span>TOTAL</span>
+      </div>
+      {rows.map((row) => (
+        <div className={`standing-row ${row.rank <= 3 ? 'top-rank' : ''}`} key={row.username}>
+          <div>
+            <span className="rank-number">{String(row.rank).padStart(2, '0')}</span>
+            <strong>{row.username}</strong>
+          </div>
+          <span>{row.nhlPoints ?? '—'}</span>
+          <span>{row.pwhlPoints ?? '—'}</span>
           <b>{row.points}</b>
         </div>
       ))}

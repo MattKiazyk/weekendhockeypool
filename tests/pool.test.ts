@@ -19,6 +19,7 @@ import {
 const games: Game[] = [
   {
     id: 1,
+    sourceId: 1,
     startUtc: '2026-10-09T23:00:00Z',
     easternDate: '2026-10-09',
     away: { code: 'SEA', name: 'Seattle Kraken', logo: null },
@@ -30,6 +31,7 @@ const games: Game[] = [
   },
   {
     id: 2,
+    sourceId: 2,
     startUtc: '2026-10-10T17:00:00Z',
     easternDate: '2026-10-10',
     away: { code: 'PHI', name: 'Philadelphia Flyers', logo: null },
@@ -71,6 +73,7 @@ describe('pool rules', () => {
 
   it('requires at least one game and every result to be settled before completion', () => {
     const week: Weekend = {
+      league: 'nhl',
       startDate: '2026-10-09',
       season: '2026-27',
       lockAt: null,
@@ -99,6 +102,7 @@ describe('pool rules', () => {
   it('locks at the earliest weekend game and identifies the NHL season', () => {
     expect(lockTime([...games].reverse())).toBe('2026-10-09T23:00:00Z')
     const weekend: Weekend = {
+      league: 'nhl',
       startDate: '2026-10-09',
       season: '2026-27',
       lockAt: games[0].startUtc,

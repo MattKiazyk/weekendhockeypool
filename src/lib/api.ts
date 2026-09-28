@@ -1,4 +1,4 @@
-import type { Entry, PublicPick, Standing, Weekend, WeekListing } from './pool'
+import type { CombinedStanding, Entry, PublicPick, Standing, Weekend, WeekListing } from './pool'
 
 export interface PoolData {
   week: Weekend | null
@@ -6,6 +6,7 @@ export interface PoolData {
   entry: Entry | null
   standings: Standing[]
   seasonStandings: Standing[]
+  combinedStandings: CombinedStanding[]
   entrants: string[]
   publicPicks: PublicPick[]
 }
@@ -16,6 +17,7 @@ export const emptyPool: PoolData = {
   entry: null,
   standings: [],
   seasonStandings: [],
+  combinedStandings: [],
   entrants: [],
   publicPicks: [],
 }

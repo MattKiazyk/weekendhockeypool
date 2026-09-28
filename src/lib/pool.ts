@@ -1,4 +1,5 @@
 export type Side = 'away' | 'home'
+export type LeagueId = 'nhl' | 'pwhl'
 export type GameState = 'scheduled' | 'live' | 'final' | 'void'
 export type WeekendStatus = 'open' | 'locked' | 'final'
 
@@ -10,6 +11,7 @@ export interface Team {
 
 export interface Game {
   id: number
+  sourceId: number
   startUtc: string
   easternDate: string
   away: Team
@@ -21,6 +23,7 @@ export interface Game {
 }
 
 export interface Weekend {
+  league: LeagueId
   startDate: string
   season: string
   lockAt: string | null
@@ -56,9 +59,15 @@ export interface PublicPick {
 }
 
 export interface WeekListing {
+  league: LeagueId
   start_date: string
   season: string
   status: WeekendStatus
+}
+
+export interface CombinedStanding extends Standing {
+  nhlPoints: number | null
+  pwhlPoints: number | null
 }
 
 export function isWeekendComplete(week: Weekend): boolean {

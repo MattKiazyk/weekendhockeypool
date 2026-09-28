@@ -22,7 +22,8 @@
       "state": "scheduled",
       "awayScore": null,
       "homeScore": null,
-      "winner": null
+      "winner": null,
+      "sourceId": 2026020017
     },
     {
       "id": 2026020018,
@@ -41,7 +42,8 @@
       "state": "scheduled",
       "awayScore": null,
       "homeScore": null,
-      "winner": null
+      "winner": null,
+      "sourceId": 2026020018
     },
     {
       "id": 2026020019,
@@ -60,7 +62,8 @@
       "state": "scheduled",
       "awayScore": null,
       "homeScore": null,
-      "winner": null
+      "winner": null,
+      "sourceId": 2026020019
     },
     {
       "id": 2026020020,
@@ -79,7 +82,8 @@
       "state": "scheduled",
       "awayScore": null,
       "homeScore": null,
-      "winner": null
+      "winner": null,
+      "sourceId": 2026020020
     },
     {
       "id": 2026020021,
@@ -98,7 +102,8 @@
       "state": "scheduled",
       "awayScore": null,
       "homeScore": null,
-      "winner": null
+      "winner": null,
+      "sourceId": 2026020021
     },
     {
       "id": 2026020022,
@@ -117,7 +122,8 @@
       "state": "scheduled",
       "awayScore": null,
       "homeScore": null,
-      "winner": null
+      "winner": null,
+      "sourceId": 2026020022
     },
     {
       "id": 2026020023,
@@ -136,7 +142,8 @@
       "state": "scheduled",
       "awayScore": null,
       "homeScore": null,
-      "winner": null
+      "winner": null,
+      "sourceId": 2026020023
     },
     {
       "id": 2026020024,
@@ -155,7 +162,8 @@
       "state": "scheduled",
       "awayScore": null,
       "homeScore": null,
-      "winner": null
+      "winner": null,
+      "sourceId": 2026020024
     },
     {
       "id": 2026020025,
@@ -174,7 +182,8 @@
       "state": "scheduled",
       "awayScore": null,
       "homeScore": null,
-      "winner": null
+      "winner": null,
+      "sourceId": 2026020025
     },
     {
       "id": 2026020026,
@@ -193,7 +202,8 @@
       "state": "scheduled",
       "awayScore": null,
       "homeScore": null,
-      "winner": null
+      "winner": null,
+      "sourceId": 2026020026
     },
     {
       "id": 2026020027,
@@ -212,7 +222,8 @@
       "state": "scheduled",
       "awayScore": null,
       "homeScore": null,
-      "winner": null
+      "winner": null,
+      "sourceId": 2026020027
     },
     {
       "id": 2026020028,
@@ -231,7 +242,8 @@
       "state": "scheduled",
       "awayScore": null,
       "homeScore": null,
-      "winner": null
+      "winner": null,
+      "sourceId": 2026020028
     },
     {
       "id": 2026020029,
@@ -250,7 +262,8 @@
       "state": "scheduled",
       "awayScore": null,
       "homeScore": null,
-      "winner": null
+      "winner": null,
+      "sourceId": 2026020029
     },
     {
       "id": 2026020030,
@@ -269,7 +282,8 @@
       "state": "scheduled",
       "awayScore": null,
       "homeScore": null,
-      "winner": null
+      "winner": null,
+      "sourceId": 2026020030
     },
     {
       "id": 2026020031,
@@ -288,7 +302,8 @@
       "state": "scheduled",
       "awayScore": null,
       "homeScore": null,
-      "winner": null
+      "winner": null,
+      "sourceId": 2026020031
     },
     {
       "id": 2026020032,
@@ -307,7 +322,8 @@
       "state": "scheduled",
       "awayScore": null,
       "homeScore": null,
-      "winner": null
+      "winner": null,
+      "sourceId": 2026020032
     },
     {
       "id": 2026020033,
@@ -326,7 +342,8 @@
       "state": "scheduled",
       "awayScore": null,
       "homeScore": null,
-      "winner": null
+      "winner": null,
+      "sourceId": 2026020033
     },
     {
       "id": 2026020034,
@@ -345,7 +362,8 @@
       "state": "scheduled",
       "awayScore": null,
       "homeScore": null,
-      "winner": null
+      "winner": null,
+      "sourceId": 2026020034
     },
     {
       "id": 2026020035,
@@ -364,7 +382,8 @@
       "state": "scheduled",
       "awayScore": null,
       "homeScore": null,
-      "winner": null
+      "winner": null,
+      "sourceId": 2026020035
     },
     {
       "id": 2026020036,
@@ -383,7 +402,8 @@
       "state": "scheduled",
       "awayScore": null,
       "homeScore": null,
-      "winner": null
+      "winner": null,
+      "sourceId": 2026020036
     },
     {
       "id": 2026020037,
@@ -402,7 +422,8 @@
       "state": "scheduled",
       "awayScore": null,
       "homeScore": null,
-      "winner": null
+      "winner": null,
+      "sourceId": 2026020037
     },
     {
       "id": 2026020038,
@@ -421,7 +442,8 @@
       "state": "scheduled",
       "awayScore": null,
       "homeScore": null,
-      "winner": null
+      "winner": null,
+      "sourceId": 2026020038
     },
     {
       "id": 2026020039,
@@ -440,7 +462,9 @@
       "state": "scheduled",
       "awayScore": null,
       "homeScore": null,
-      "winner": null
+      "winner": null,
+      "sourceId": 2026020039
     }
-  ]
+  ],
+  "league": "nhl"
 }

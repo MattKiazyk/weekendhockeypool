@@ -7,6 +7,7 @@ import {
   weekendStartAt,
   type Pick,
 } from '../src/lib/pool'
+import { isLeague } from '../src/lib/leagues'
 import { auth } from './auth'
 import { admin } from './admin'
 import { getWeek, getEntry, saveEntry, savePlayer } from './db'
@@ -18,6 +19,9 @@ export async function api(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url)
   const path = url.pathname
   const start = url.searchParams.get('start')
+  const requestedLeague = url.searchParams.get('league') ?? 'nhl'
+  if (path !== '/api/season' && !isLeague(requestedLeague)) return error('Invalid league', 400)
+  const league = isLeague(requestedLeague) ? requestedLeague : 'nhl'
   if (path === '/api/me' && request.method === 'GET') {
     const user = await auth(request, env)
     if (!user) return error('Sign in required', 401)
@@ -31,88 +35,116 @@ export async function api(request: Request, env: Env): Promise<Response> {
     const currentStart = weekendStartAt(Date.now())
     const selected = start ?? currentStart
     if (!validStart(selected)) return error('Invalid weekend date', 400)
-    let week = await getWeek(env.DB, selected)
+    let week = await getWeek(env.DB, league, selected)
     if (!week && [currentStart, addDays(currentStart, 7)].includes(selected)) {
-      week = await syncSchedule(env.DB, selected)
+      week = await syncSchedule(env.DB, league, selected)
     }
     if (!start && !week?.games.length) {
       const nextStart = addDays(currentStart, 7)
-      const nextWeek = (await getWeek(env.DB, nextStart)) ?? (await syncSchedule(env.DB, nextStart))
+      const nextWeek =
+        (await getWeek(env.DB, league, nextStart)) ??
+        (await syncSchedule(env.DB, league, nextStart))
       if (nextWeek.games.length) week = nextWeek
     }
     return json({ week })
   }
   if (path === '/api/weeks' && request.method === 'GET') {
     const rows = await env.DB.prepare(
-      'SELECT start_date, season, status, lock_at, finalized_at FROM weekends WHERE EXISTS (SELECT 1 FROM games WHERE games.weekend_start=weekends.start_date) ORDER BY start_date DESC LIMIT 24',
-    ).all()
+      'SELECT league, start_date, season, status, lock_at, finalized_at FROM weekends WHERE league=? AND EXISTS (SELECT 1 FROM games WHERE games.league=weekends.league AND games.weekend_start=weekends.start_date) ORDER BY start_date DESC LIMIT 24',
+    )
+      .bind(league)
+      .all()
     return json({ weeks: rows.results })
   }
   if (path === '/api/entrants' && request.method === 'GET') {
     if (!validStart(start)) return error('Invalid weekend date', 400)
     const rows = await env.DB.prepare(
-      'SELECT p.username FROM entries e JOIN players p ON p.clerk_id=e.clerk_id WHERE e.weekend_start=? ORDER BY p.username COLLATE NOCASE',
+      'SELECT p.username FROM entries e JOIN players p ON p.clerk_id=e.clerk_id WHERE e.league=? AND e.weekend_start=? ORDER BY p.username COLLATE NOCASE',
     )
-      .bind(start)
+      .bind(league, start)
       .all<{ username: string }>()
     return json({ entrants: rows.results.map((row) => row.username) })
   }
   if (path === '/api/standings' && request.method === 'GET') {
     if (!validStart(start)) return error('Invalid weekend date', 400)
-    const week = await getWeek(env.DB, start)
+    const week = await getWeek(env.DB, league, start)
     if (!week || !hasEntryDeadlinePassed(week) || week.status !== 'final')
       return json({ standings: [] })
     const rows = await env.DB.prepare(
-      'SELECT p.username, s.points, s.correct, s.rank FROM standings s JOIN players p ON p.clerk_id=s.clerk_id WHERE s.weekend_start=? ORDER BY s.rank, p.username',
+      'SELECT p.username, s.points, s.correct, s.rank FROM standings s JOIN players p ON p.clerk_id=s.clerk_id WHERE s.league=? AND s.weekend_start=? ORDER BY s.rank, p.username',
     )
-      .bind(start)
+      .bind(league, start)
       .all()
     return json({ standings: rows.results })
   }
   if (path === '/api/season' && request.method === 'GET') {
+    if (requestedLeague !== 'all' && !isLeague(requestedLeague)) return error('Invalid league', 400)
     const season = url.searchParams.get('season')
     if (!season || !/^\d{4}-\d{2}$/.test(season)) return error('Invalid season', 400)
+    const combined = requestedLeague === 'all'
     const rows = await env.DB.prepare(
-      `SELECT p.username, SUM(s.points) AS points, SUM(s.correct) AS correct
-      FROM standings s JOIN weekends w ON w.start_date=s.weekend_start JOIN players p ON p.clerk_id=s.clerk_id
-      WHERE w.season=? AND w.status='final' GROUP BY s.clerk_id ORDER BY points DESC, p.username`,
+      `SELECT p.username, SUM(s.points) AS points, SUM(s.correct) AS correct,
+      SUM(CASE WHEN s.league='nhl' THEN s.points END) AS nhlPoints,
+      SUM(CASE WHEN s.league='pwhl' THEN s.points END) AS pwhlPoints
+      FROM standings s JOIN weekends w ON w.league=s.league AND w.start_date=s.weekend_start
+      JOIN players p ON p.clerk_id=s.clerk_id
+      WHERE w.season=? AND w.status='final' AND (?='all' OR s.league=?)
+      GROUP BY s.clerk_id ORDER BY points DESC, p.username`,
     )
-      .bind(season)
-      .all<{ username: string; points: number; correct: number }>()
-    return json({ standings: rankScores(rows.results) })
+      .bind(season, requestedLeague, requestedLeague)
+      .all<{
+        username: string
+        points: number
+        correct: number
+        nhlPoints: number | null
+        pwhlPoints: number | null
+      }>()
+    const standings = rankScores(rows.results)
+    return json({
+      standings: combined
+        ? standings
+        : standings.map((row) => ({
+            username: row.username,
+            points: row.points,
+            correct: row.correct,
+            rank: row.rank,
+          })),
+    })
   }
   if (path === '/api/entry' && (request.method === 'GET' || request.method === 'PUT')) {
     const user = await auth(request, env)
     if (!user) return error('Sign in to manage your entry', 401)
     if (request.method === 'GET') {
       if (!validStart(start)) return error('Invalid weekend date', 400)
-      const entry = await getEntry(env.DB, start, user.userId)
+      const entry = await getEntry(env.DB, league, start, user.userId)
       return json({ entry })
     }
-    const body = (await request.json()) as { startDate?: string; picks?: Pick[] }
+    const body = (await request.json()) as { league?: unknown; startDate?: string; picks?: Pick[] }
+    const bodyLeague = body.league ?? 'nhl'
+    if (!isLeague(bodyLeague)) return error('Invalid league', 400)
     const bodyStart = body.startDate ?? null
     if (!validStart(bodyStart) || !Array.isArray(body.picks)) return error('Invalid entry', 400)
-    const week = await getWeek(env.DB, bodyStart)
+    const week = await getWeek(env.DB, bodyLeague, bodyStart)
     if (!week || !isEntryOpen(week)) return error('Entries are closed', 409)
     const errors = validatePicks(body.picks, week.games)
     if (errors.length) return json({ error: errors[0], errors }, 400)
     if (!(await savePlayer(env.DB, user))) return error('Set a Clerk username before entering', 422)
-    const timestamp = await saveEntry(env.DB, bodyStart, user.userId, body.picks)
+    const timestamp = await saveEntry(env.DB, bodyLeague, bodyStart, user.userId, body.picks)
     return json({ saved: true, updatedAt: timestamp })
   }
   if (path === '/api/picks' && request.method === 'GET') {
     const user = await auth(request, env)
     if (!user) return error('Sign in to view players’ picks', 401)
     if (!validStart(start)) return error('Invalid weekend date', 400)
-    const week = await getWeek(env.DB, start)
+    const week = await getWeek(env.DB, league, start)
     if (!week || !hasEntryDeadlinePassed(week))
       return error('Picks are hidden until the entry deadline', 403)
     const rows = await env.DB.prepare(
       `SELECT p.username, k.game_id, k.side, k.confidence FROM picks k
       JOIN entries e ON e.id=k.entry_id JOIN players p ON p.clerk_id=e.clerk_id
-      WHERE e.weekend_start=? ORDER BY p.username, k.game_id`,
+      WHERE e.league=? AND e.weekend_start=? ORDER BY p.username, k.game_id`,
     )
-      .bind(start)
+      .bind(league, start)
       .all()
     return json({ picks: rows.results })
   }

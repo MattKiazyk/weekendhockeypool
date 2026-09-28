@@ -99,8 +99,8 @@ export default function AdminPanel({ week, saving, onAction, onSelectWeek }: Adm
           <span className="card-kicker">SCHEDULE FALLBACK</span>
           <h3>MANUAL MATCHUP.</h3>
           <p>
-            Add a missing NHL game before lock if the feed is unavailable. The game ID must match
-            the NHL schedule.
+            Add a missing {week.league.toUpperCase()} game before lock if the feed is unavailable.
+            The game ID must match that league’s schedule.
           </p>
         </div>
         <div className="admin-form">
@@ -113,7 +113,7 @@ export default function AdminPanel({ week, saving, onAction, onSelectWeek }: Adm
             />
           </label>
           <label>
-            NHL game ID
+            {week.league.toUpperCase()} game ID
             <input
               type="number"
               value={newGameId}

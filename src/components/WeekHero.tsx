@@ -1,11 +1,13 @@
-import type { Weekend, WeekendStatus } from '../lib/pool'
+import type { LeagueId, Weekend, WeekendStatus } from '../lib/pool'
 import { formatSlateDates, formatTime } from '../lib/format'
 
 export default function WeekHero({
   week,
+  league,
   status,
 }: {
   week: Weekend | null
+  league: LeagueId
   status: WeekendStatus
 }) {
   const count = week?.games.length ?? 0
@@ -14,7 +16,7 @@ export default function WeekHero({
       <div className="hero-lines" aria-hidden="true" />
       <div className="hero-content">
         <div className="eyebrow">
-          <span className="live-dot" /> NHL REGULAR SEASON{' '}
+          <span className="live-dot" /> {league.toUpperCase()} REGULAR SEASON{' '}
           <span className="eyebrow-divider">/</span> {week?.season ?? '2026–27'}
         </div>
         <div className="slate-summary">

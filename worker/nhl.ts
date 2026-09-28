@@ -1,4 +1,14 @@
-import { easternDate, isInWeekend, weekendStartAt, type Game, type Side } from '../src/lib/pool'
+import {
+  addDays,
+  easternDate,
+  isInWeekend,
+  seasonFor,
+  weekendStartAt,
+  type Game,
+  type Side,
+  type Weekend,
+} from '../src/lib/pool'
+import type { GameResult } from './feeds'
 
 type NhlTeam = {
   abbrev: string
@@ -39,6 +49,7 @@ function teamName(team: NhlTeam): string {
 export function gameFromNhl(raw: NhlGame): Game {
   return {
     id: raw.id,
+    sourceId: raw.id,
     startUtc: raw.startTimeUTC,
     easternDate: easternDate(raw.startTimeUTC),
     away: {
@@ -56,6 +67,45 @@ export function gameFromNhl(raw: NhlGame): Game {
     homeScore: null,
     winner: null,
   }
+}
+
+export async function getNhlSchedule(start: string): Promise<{ games: Game[]; season: string }> {
+  const feed = (await nhl(`schedule/${start}`)) as {
+    gameWeek?: { date: string; games: NhlGame[] }[]
+  }
+  if (!Array.isArray(feed.gameWeek)) throw new Error('NHL schedule response is invalid')
+  return {
+    games: feed.gameWeek
+      .flatMap((day) => day.games ?? [])
+      .filter((game) => game.gameType === 2 && isInWeekend(easternDate(game.startTimeUTC), start))
+      .map(gameFromNhl),
+    season: seasonFor(start),
+  }
+}
+
+export async function getNhlResults(week: Weekend): Promise<Map<number, GameResult>> {
+  const days = [week.startDate, addDays(week.startDate, 1), addDays(week.startDate, 2)]
+  const responses = (await Promise.all(days.map((date) => nhl(`score/${date}`)))) as {
+    games?: NhlGame[]
+  }[]
+  if (responses.some((response) => !Array.isArray(response.games)))
+    throw new Error('NHL score response is invalid')
+  const scores = new Map(
+    responses.flatMap((response) => response.games ?? []).map((game) => [game.id, game]),
+  )
+  const results = new Map<number, GameResult>()
+  for (const game of week.games) {
+    let source = scores.get(game.sourceId)
+    if (!source && game.state !== 'final' && game.state !== 'void') {
+      try {
+        source = (await nhl(`gamecenter/${game.sourceId}/landing`)) as NhlGame
+      } catch {
+        /* Retry on the next run. */
+      }
+    }
+    if (source) results.set(game.sourceId, resultFromNhl(source, game))
+  }
+  return results
 }
 
 export function resultFromNhl(

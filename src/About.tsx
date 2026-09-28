@@ -9,7 +9,7 @@ const steps = [
     title: 'Pick one winner',
     image: '/about-pick.svg',
     alt: 'Illustration of an away team selected over a home team',
-    text: 'Every NHL regular-season game from Friday through Sunday appears on the pick sheet. Choose either the away team or the home team for every game.',
+    text: 'Switch between NHL and PWHL. Every regular-season game from Friday through Sunday appears on its league’s pick sheet. Choose a winner for every game.',
   },
   {
     number: '02',
@@ -23,7 +23,7 @@ const steps = [
     title: 'Watch the board',
     image: '/about-score.svg',
     alt: 'Illustration of a correct pick earning points on a leaderboard',
-    text: 'A correct pick earns its confidence number. A miss earns zero. When the weekend is over, see your rank and your running season total.',
+    text: 'A correct pick earns its confidence number. A miss earns zero. Each league has its own standings, and the combined season table adds points from both.',
   },
 ]
 
@@ -41,8 +41,8 @@ function About({ demo, onPlay }: AboutProps) {
             MAKE YOUR <em>CALL.</em>
           </h1>
           <p>
-            Three days of hockey. One winner per game. Give every pick a unique confidence number,
-            then let the final scores do the talking.
+            Three days of hockey in each league. Enter NHL, PWHL, or both with one entry per league
+            each weekend. Give every pick a unique confidence number.
           </p>
           <button type="button" className="about-cta" onClick={onPlay}>
             See this weekend’s games <span aria-hidden="true">↗</span>
@@ -125,8 +125,8 @@ function About({ demo, onPlay }: AboutProps) {
               </span>
               <h3>When do entries lock?</h3>
               <p>
-                At the first scheduled Friday game. If Friday has no games, entries lock at the
-                first weekend game. You can save changes until then.
+                Each league locks at its first scheduled weekend game. If Friday has no games,
+                entries lock at the first Saturday or Sunday game. You can save changes until then.
               </p>
             </article>
             <article>
@@ -157,7 +157,7 @@ function About({ demo, onPlay }: AboutProps) {
               <h3>When are ranks final?</h3>
               <p>
                 After every game is final or void. Equal point totals share a rank, and points from
-                finalized weekends add to the season standings.
+                finalized weekends add to that league’s season standings and the combined total.
               </p>
             </article>
           </div>

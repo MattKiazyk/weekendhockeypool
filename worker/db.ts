@@ -1,9 +1,10 @@
-import type { Game, Weekend, Pick, Side, Entry } from '../src/lib/pool'
+import type { Game, Weekend, Pick, Side, Entry, LeagueId } from '../src/lib/pool'
 import type { Player } from './types'
 import { nowIso } from './http'
 
 interface GameRow {
   id: number
+  source_game_id: number
   start_utc: string
   eastern_date: string
   away_code: string
@@ -19,6 +20,7 @@ interface GameRow {
 }
 
 interface WeekRow {
+  league: LeagueId
   start_date: string
   season: string
   lock_at: string | null
@@ -29,6 +31,7 @@ interface WeekRow {
 function fromRow(row: GameRow): Game {
   return {
     id: row.id,
+    sourceId: row.source_game_id,
     startUtc: row.start_utc,
     easternDate: row.eastern_date,
     away: { code: row.away_code, name: row.away_name, logo: row.away_logo },
@@ -40,15 +43,19 @@ function fromRow(row: GameRow): Game {
   }
 }
 
-export async function getWeek(db: D1Database, start: string): Promise<Weekend | null> {
+export async function getWeek(
+  db: D1Database,
+  league: LeagueId,
+  start: string,
+): Promise<Weekend | null> {
   const week = await db
-    .prepare('SELECT * FROM weekends WHERE start_date = ?')
-    .bind(start)
+    .prepare('SELECT * FROM weekends WHERE league = ? AND start_date = ?')
+    .bind(league, start)
     .first<WeekRow>()
   if (!week) return null
   const rows = await db
-    .prepare('SELECT * FROM games WHERE weekend_start = ? ORDER BY start_utc, id')
-    .bind(start)
+    .prepare('SELECT * FROM games WHERE league = ? AND weekend_start = ? ORDER BY start_utc, id')
+    .bind(league, start)
     .all<GameRow>()
   const status =
     week.status === 'final'
@@ -57,6 +64,7 @@ export async function getWeek(db: D1Database, start: string): Promise<Weekend | 
         ? 'locked'
         : 'open'
   return {
+    league,
     startDate: start,
     season: week.season,
     lockAt: week.lock_at,
@@ -79,21 +87,23 @@ export async function savePlayer(db: D1Database, user: Player): Promise<boolean>
 
 export function upsertGame(
   db: D1Database,
+  league: LeagueId,
   start: string,
   game: Game,
-  source: 'nhl' | 'admin',
+  source: 'feed' | 'admin',
 ): D1PreparedStatement {
   return db
     .prepare(
-      `INSERT INTO games (id, weekend_start, start_utc, eastern_date, away_code, away_name, away_logo, home_code, home_name, home_logo, source)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET
+      `INSERT INTO games (league, source_game_id, weekend_start, start_utc, eastern_date, away_code, away_name, away_logo, home_code, home_name, home_logo, source)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(league, source_game_id) DO UPDATE SET
     start_utc=excluded.start_utc, eastern_date=excluded.eastern_date,
     away_code=excluded.away_code, away_name=excluded.away_name, away_logo=excluded.away_logo,
     home_code=excluded.home_code, home_name=excluded.home_name, home_logo=excluded.home_logo, source=excluded.source
     WHERE games.source!='admin' OR excluded.source='admin'`,
     )
     .bind(
-      game.id,
+      league,
+      game.sourceId,
       start,
       game.startUtc,
       game.easternDate,
@@ -107,24 +117,29 @@ export function upsertGame(
     )
 }
 
-export function updateLockTime(db: D1Database, start: string): D1PreparedStatement {
+export function updateLockTime(
+  db: D1Database,
+  league: LeagueId,
+  start: string,
+): D1PreparedStatement {
   return db
     .prepare(
-      'UPDATE weekends SET lock_at=(SELECT MIN(start_utc) FROM games WHERE weekend_start=?) WHERE start_date=?',
+      'UPDATE weekends SET lock_at=(SELECT MIN(start_utc) FROM games WHERE league=? AND weekend_start=?) WHERE league=? AND start_date=?',
     )
-    .bind(start, start)
+    .bind(league, start, league, start)
 }
 
 export async function getEntry(
   db: D1Database,
+  league: LeagueId,
   start: string,
   userId: string,
 ): Promise<Entry | null> {
   const row = await db
     .prepare(
-      'SELECT id, submitted_at, updated_at FROM entries WHERE weekend_start=? AND clerk_id=?',
+      'SELECT id, submitted_at, updated_at FROM entries WHERE league=? AND weekend_start=? AND clerk_id=?',
     )
-    .bind(start, userId)
+    .bind(league, start, userId)
     .first<{ id: number; submitted_at: string; updated_at: string }>()
   if (!row) return null
   const picks = await db
@@ -138,6 +153,7 @@ export async function getEntry(
 
 export async function saveEntry(
   db: D1Database,
+  league: LeagueId,
   start: string,
   userId: string,
   picks: Pick[],
@@ -146,22 +162,22 @@ export async function saveEntry(
   const statements = [
     db
       .prepare(
-        `INSERT INTO entries (weekend_start, clerk_id, submitted_at, updated_at) VALUES (?, ?, ?, ?)
-      ON CONFLICT(weekend_start, clerk_id) DO UPDATE SET updated_at=excluded.updated_at`,
+        `INSERT INTO entries (league, weekend_start, clerk_id, submitted_at, updated_at) VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(league, weekend_start, clerk_id) DO UPDATE SET updated_at=excluded.updated_at`,
       )
-      .bind(start, userId, timestamp, timestamp),
+      .bind(league, start, userId, timestamp, timestamp),
     db
       .prepare(
-        'DELETE FROM picks WHERE entry_id=(SELECT id FROM entries WHERE weekend_start=? AND clerk_id=?)',
+        'DELETE FROM picks WHERE entry_id=(SELECT id FROM entries WHERE league=? AND weekend_start=? AND clerk_id=?)',
       )
-      .bind(start, userId),
+      .bind(league, start, userId),
     ...picks.map((pick) =>
       db
         .prepare(
           `INSERT INTO picks (entry_id, game_id, side, confidence)
-      VALUES ((SELECT id FROM entries WHERE weekend_start=? AND clerk_id=?), ?, ?, ?)`,
+      VALUES ((SELECT id FROM entries WHERE league=? AND weekend_start=? AND clerk_id=?), ?, ?, ?)`,
         )
-        .bind(start, userId, pick.gameId, pick.side, pick.confidence),
+        .bind(league, start, userId, pick.gameId, pick.side, pick.confidence),
     ),
   ]
   await db.batch(statements)

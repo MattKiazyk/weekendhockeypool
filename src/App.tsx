@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import About from './About'
 import AdminPanel from './components/AdminPanel'
+import LeagueTabs from './components/LeagueTabs'
 import PickSheet from './components/PickSheet'
 import PicksIntro from './components/PicksIntro'
 import { SeasonResults, WeekendResults } from './components/Results'
@@ -8,6 +9,7 @@ import SaveToast, { type SaveFeedback } from './components/SaveToast'
 import SiteHeader from './components/SiteHeader'
 import WeekHero from './components/WeekHero'
 import { usePool } from './hooks/usePool'
+import { isLeague } from './lib/leagues'
 import {
   hasEntryDeadlinePassed,
   isEntryOpen,
@@ -16,6 +18,7 @@ import {
   validatePicks,
   weekendStartAt,
   type Pick,
+  type LeagueId,
   type Weekend,
   type WeekendStatus,
 } from './lib/pool'
@@ -24,12 +27,17 @@ import { viewFromHash, views, type View } from './lib/views'
 
 export default function App({ session, demo }: { session: PoolSession; demo: boolean }) {
   const [view, setView] = useState<View>(viewFromHash)
+  const [league, setLeague] = useState<LeagueId>(() => {
+    const selected = new URLSearchParams(window.location.search).get('league')
+    return isLeague(selected) ? selected : 'nhl'
+  })
+  const [seasonScope, setSeasonScope] = useState<'league' | 'all'>('league')
   const [stage, setStage] = useState<WeekendStatus>('open')
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [saveFeedback, setSaveFeedback] = useState<SaveFeedback | null>(null)
   const [saveToastVisible, setSaveToastVisible] = useState(false)
-  const pool = usePool(session, demo, stage, view === 'standings')
+  const pool = usePool(session, league, demo, stage, view === 'standings')
   const {
     week,
     weeks,
@@ -37,6 +45,7 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
     draft,
     standings,
     seasonStandings,
+    combinedStandings,
     entrants,
     publicPicks,
     loading,
@@ -48,9 +57,18 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
 
   useEffect(() => {
     const onHashChange = () => setView(viewFromHash())
+    const onPopState = () => {
+      const selected = new URLSearchParams(window.location.search).get('league')
+      setLeague(isLeague(selected) ? selected : 'nhl')
+      setSelectedWeek(null)
+    }
     window.addEventListener('hashchange', onHashChange)
-    return () => window.removeEventListener('hashchange', onHashChange)
-  }, [])
+    window.addEventListener('popstate', onPopState)
+    return () => {
+      window.removeEventListener('hashchange', onHashChange)
+      window.removeEventListener('popstate', onPopState)
+    }
+  }, [setSelectedWeek])
 
   useEffect(() => {
     if (!saveToastVisible) return
@@ -62,12 +80,13 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
     setSaveFeedback(null)
     setSaveToastVisible(false)
     setMessage('')
-  }, [selectedWeek, session.userId])
+  }, [league, selectedWeek, session.userId])
 
   let shownWeek: Weekend | null = week
-  if (!shownWeek && view === 'admin' && session.isAdmin) {
+  if (!shownWeek && (view === 'season' || (view === 'admin' && session.isAdmin))) {
     const startDate = selectedWeek ?? weekendStartAt(Date.now())
     shownWeek = {
+      league,
       startDate,
       season: seasonFor(startDate),
       lockAt: null,
@@ -90,6 +109,18 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
   function navigateView(next: View) {
     setView(next)
     window.location.hash = next
+    window.scrollTo({ top: 0, behavior: 'auto' })
+  }
+
+  function changeLeague(next: LeagueId) {
+    if (next === league) return
+    const url = new URL(window.location.href)
+    if (next === 'nhl') url.searchParams.delete('league')
+    else url.searchParams.set('league', next)
+    window.history.pushState(null, '', url)
+    setSelectedWeek(null)
+    setSeasonScope('league')
+    setLeague(next)
     window.scrollTo({ top: 0, behavior: 'auto' })
   }
 
@@ -145,7 +176,9 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
       {demo && (
         <div className="demo-bar">
           <span>
-            <b>LOCAL DESIGN PREVIEW</b> · Sample NHL schedule · Picks stay in this browser
+            <b>LOCAL DESIGN PREVIEW</b> ·{' '}
+            {league === 'nhl' ? 'Sample NHL schedule' : 'PWHL coming-soon preview'} · Picks stay in
+            this browser
           </span>
           <div className="demo-stages">
             <span>View state</span>
@@ -162,13 +195,18 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
         </div>
       )}
       <SiteHeader session={session} view={view} onNavigate={navigateView} />
+      <LeagueTabs league={league} onChange={changeLeague} />
       <main id="top" className="page-content">
         <PicksIntro active={view === 'picks'} onAbout={() => navigateView('about')} />
         {view === 'about' ? (
           <About demo={demo} onPlay={() => navigateView('picks')} />
         ) : (
           <>
-            <WeekHero week={shownWeek} status={displayStatus} />
+            <WeekHero
+              week={view === 'season' && !week ? null : shownWeek}
+              league={league}
+              status={displayStatus}
+            />
             <div className="content-wrap">
               {error && (
                 <div className="notice error" role="alert">
@@ -182,11 +220,20 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
               )}
               {loading ? (
                 <div className="loading-panel">Loading the weekend slate…</div>
-              ) : !shownWeek || (!shownWeek.games.length && view !== 'admin') ? (
+              ) : !shownWeek ||
+                (!shownWeek.games.length && view !== 'admin' && view !== 'season') ? (
                 <div className="empty-state large">
                   <span className="empty-icon">◇</span>
-                  <h2>No regular-season games on this weekend</h2>
-                  <p>The pool will appear when the next NHL regular-season weekend is scheduled.</p>
+                  <h2>
+                    {league === 'pwhl' && !weeks.length
+                      ? 'PWHL IS COMING THIS SEASON'
+                      : 'No regular-season games on this weekend'}
+                  </h2>
+                  <p>
+                    {league === 'pwhl' && !weeks.length
+                      ? 'PWHL picks will open when the first regular-season weekend is scheduled.'
+                      : `Try another ${league.toUpperCase()} weekend when games are scheduled.`}
+                  </p>
                 </div>
               ) : (
                 <>
@@ -210,16 +257,18 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
                           ))}
                         </select>
                       )}
-                      <span className={`status-pill ${displayStatus}`}>
-                        <i />{' '}
-                        {displayStatus === 'open'
-                          ? 'ENTRIES OPEN'
-                          : displayStatus === 'locked'
-                            ? 'PICKS LOCKED'
-                            : demo
-                              ? 'RESULTS PREVIEW'
-                              : 'FINAL RESULTS'}
-                      </span>
+                      {!!shownWeek.games.length && (
+                        <span className={`status-pill ${displayStatus}`}>
+                          <i />{' '}
+                          {displayStatus === 'open'
+                            ? 'ENTRIES OPEN'
+                            : displayStatus === 'locked'
+                              ? 'PICKS LOCKED'
+                              : demo
+                                ? 'RESULTS PREVIEW'
+                                : 'FINAL RESULTS'}
+                        </span>
+                      )}
                     </div>
                   </div>
                   {view === 'picks' && (
@@ -253,7 +302,15 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
                     />
                   )}
                   {view === 'season' && (
-                    <SeasonResults week={shownWeek} demo={demo} standings={seasonStandings} />
+                    <SeasonResults
+                      season={shownWeek.season}
+                      league={league}
+                      scope={seasonScope}
+                      onScopeChange={setSeasonScope}
+                      demo={demo}
+                      standings={seasonStandings}
+                      combinedStandings={combinedStandings}
+                    />
                   )}
                   {view === 'admin' && session.isAdmin && (
                     <AdminPanel
@@ -272,9 +329,15 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
       <footer className="site-footer">
         <span>WEEKEND HOCKEY POOL</span>
         <span>A SIMPLE HOCKEY POOL</span>
-        <span>NHL schedule and scores · Eastern time</span>
+        <span>NHL and PWHL schedules and scores · Eastern time</span>
         <span className="footer-disclaimer">
-          For fun only · No real money involved · Not affiliated with or endorsed by the NHL
+          For fun only · No real money involved · Not affiliated with or endorsed by the NHL or PWHL
+        </span>
+        <span className="footer-disclaimer">
+          PWHL statistics provided by the Professional Women’s Hockey League ·{' '}
+          <a href="http://leaguestat.com" target="_blank" rel="noreferrer">
+            Powered by HockeyTech.com
+          </a>
         </span>
       </footer>
       {saveToastVisible && saveFeedback && (

@@ -5,6 +5,7 @@ import {
   scoreEntry,
   validatePicks,
   type Entry,
+  type LeagueId,
   type PublicPick,
   type Weekend,
   type WeekendStatus,
@@ -39,10 +40,23 @@ export function saveDemoEntry(entry: Entry): void {
 }
 
 export function getDemoData(
+  league: LeagueId,
   stage: WeekendStatus,
   entry: Entry | null,
   username: string | null,
 ): PoolData {
+  const seasonStandings = rankScores([
+    { username: 'blue_line', points: 684, correct: 61 },
+    { username: 'north_end', points: 648, correct: 58 },
+    { username: username ?? 'rinkside_77', points: 612, correct: 56 },
+    { username: 'hat_trick', points: 571, correct: 50 },
+  ])
+  const combinedStandings = seasonStandings.map((row) => ({
+    ...row,
+    nhlPoints: row.points,
+    pwhlPoints: null,
+  }))
+  if (league === 'pwhl') return { ...emptyPool, combinedStandings }
   const games =
     stage === 'final'
       ? demoWeek.games.map((game, index) => ({
@@ -93,11 +107,7 @@ export function getDemoData(
             { username: 'hat_trick', points: 97, correct: 9 },
           ])
         : [],
-    seasonStandings: rankScores([
-      { username: 'blue_line', points: 684, correct: 61 },
-      { username: 'north_end', points: 648, correct: 58 },
-      { username: username ?? 'rinkside_77', points: 612, correct: 56 },
-      { username: 'hat_trick', points: 571, correct: 50 },
-    ]),
+    seasonStandings,
+    combinedStandings,
   }
 }

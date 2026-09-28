@@ -39,12 +39,12 @@ beforeEach(async () => {
   database = createTestDatabase()
   vi.mocked(auth).mockResolvedValue(user)
   await database.db
-    .prepare('INSERT INTO weekends (start_date, season) VALUES (?, ?)')
-    .bind(start, '2099-00')
+    .prepare('INSERT INTO weekends (league, start_date, season) VALUES (?, ?, ?)')
+    .bind('nhl', start, '2099-00')
     .run()
   await database.db.batch([
-    ...games.map((game) => upsertGame(database.db, start, game, 'nhl')),
-    updateLockTime(database.db, start),
+    ...games.map((game) => upsertGame(database.db, 'nhl', start, game, 'feed')),
+    updateLockTime(database.db, 'nhl', start),
   ])
   await savePlayer(database.db, user)
 })
@@ -78,17 +78,17 @@ function mockSchedule(items: NhlGame[]) {
 describe('entry persistence and visibility', () => {
   it('saves and replaces a complete entry without changing its submission time', async () => {
     expect((await request('entry', 'PUT', { startDate: start, picks })).status).toBe(200)
-    const first = await getEntry(database.db, start, user.userId)
+    const first = await getEntry(database.db, 'nhl', start, user.userId)
     const changed = picks.map((pick) => ({ ...pick, confidence: 3 - pick.confidence }))
-    await saveEntry(database.db, start, user.userId, changed)
-    const saved = await getEntry(database.db, start, user.userId)
+    await saveEntry(database.db, 'nhl', start, user.userId, changed)
+    const saved = await getEntry(database.db, 'nhl', start, user.userId)
     expect(saved?.picks).toEqual(changed)
     expect(saved?.submittedAt).toBe(first?.submittedAt)
     expect(await (await request(`entry?start=${start}`)).json()).toEqual({ entry: saved })
   })
 
   it('lists entrants before lock but reveals picks only after the deadline to signed-in users', async () => {
-    await saveEntry(database.db, start, user.userId, picks)
+    await saveEntry(database.db, 'nhl', start, user.userId, picks)
     expect(await (await request(`entrants?start=${start}`)).json()).toEqual({
       entrants: ['rinkside'],
     })
@@ -111,17 +111,17 @@ describe('entry persistence and visibility', () => {
       expect(response.status).toBe(400)
       expect(await response.json()).toHaveProperty('error')
     }
-    expect(await getEntry(database.db, start, user.userId)).toBeNull()
+    expect(await getEntry(database.db, 'nhl', start, user.userId)).toBeNull()
   })
 
   it('enforces the deadline in the API and the database, preserving the existing entry', async () => {
-    await saveEntry(database.db, start, user.userId, picks)
+    await saveEntry(database.db, 'nhl', start, user.userId, picks)
     closeEntries()
     expect((await request('entry', 'PUT', { startDate: start, picks })).status).toBe(409)
-    await expect(saveEntry(database.db, start, user.userId, picks)).rejects.toThrow(
+    await expect(saveEntry(database.db, 'nhl', start, user.userId, picks)).rejects.toThrow(
       'entries are closed',
     )
-    expect((await getEntry(database.db, start, user.userId))?.picks).toEqual(picks)
+    expect((await getEntry(database.db, 'nhl', start, user.userId))?.picks).toEqual(picks)
   })
 
   it('rejects admin mutations by other users', async () => {
@@ -129,7 +129,7 @@ describe('entry persistence and visibility', () => {
     expect(
       (await request('admin/remove-game', 'POST', { startDate: start, gameId: 1 })).status,
     ).toBe(403)
-    expect((await getWeek(database.db, start))?.games).toHaveLength(2)
+    expect((await getWeek(database.db, 'nhl', start))?.games).toHaveLength(2)
   })
 })
 
@@ -137,6 +137,7 @@ describe('schedule and results', () => {
   it('keeps manual game details and derives the deadline from the retained schedule', async () => {
     await upsertGame(
       database.db,
+      'nhl',
       start,
       { ...games[0], startUtc: `${start}T23:30:00Z` },
       'admin',
@@ -146,7 +147,7 @@ describe('schedule and results', () => {
       { ...raw, id: 2, startTimeUTC: games[1].startUtc },
       { ...raw, id: 3, gameType: 1 },
     ])
-    const week = await syncSchedule(database.db, start)
+    const week = await syncSchedule(database.db, 'nhl', start)
     expect(week.games).toHaveLength(2)
     expect(week.games[0].startUtc).toBe(`${start}T23:30:00Z`)
     expect(week.lockAt).toBe(`${start}T23:30:00Z`)
@@ -155,22 +156,26 @@ describe('schedule and results', () => {
   it('does not restore excluded games or erase a published slate after an empty feed', async () => {
     await request('admin/remove-game', 'POST', { startDate: start, gameId: 1 })
     mockSchedule([raw, { ...raw, id: 2, startTimeUTC: games[1].startUtc }])
-    expect((await syncSchedule(database.db, start)).games.map((game) => game.id)).toEqual([2])
+    expect((await syncSchedule(database.db, 'nhl', start)).games.map((game) => game.id)).toEqual([
+      2,
+    ])
     mockSchedule([])
-    await expect(syncSchedule(database.db, start)).rejects.toThrow('empty replacement schedule')
-    expect((await getWeek(database.db, start))?.games).toHaveLength(1)
+    await expect(syncSchedule(database.db, 'nhl', start)).rejects.toThrow(
+      'empty replacement schedule',
+    )
+    expect((await getWeek(database.db, 'nhl', start))?.games).toHaveLength(1)
   })
 
   it('freezes the game list at lock without calling the NHL feed', async () => {
     closeEntries()
     const fetch = vi.fn()
     vi.stubGlobal('fetch', fetch)
-    expect((await syncSchedule(database.db, start)).status).toBe('locked')
+    expect((await syncSchedule(database.db, 'nhl', start)).status).toBe('locked')
     expect(fetch).not.toHaveBeenCalled()
   })
 
   it('keeps admin corrections during result sync and publishes completed results', async () => {
-    await saveEntry(database.db, start, user.userId, picks)
+    await saveEntry(database.db, 'nhl', start, user.userId, picks)
     closeEntries()
     database.sqlite.exec("UPDATE games SET state='void', source='admin' WHERE id=1")
     vi.stubGlobal(
@@ -196,7 +201,7 @@ describe('schedule and results', () => {
         }),
       ),
     )
-    const week = await syncResults(database.db, start)
+    const week = await syncResults(database.db, 'nhl', start)
     expect(week?.status).toBe('final')
     expect(week?.games[0].state).toBe('void')
     expect(await (await request(`standings?start=${start}`)).json()).toEqual({
@@ -205,25 +210,25 @@ describe('schedule and results', () => {
   })
 
   it('recalculates standings idempotently and excludes entries made incomplete by a schedule change', async () => {
-    await saveEntry(database.db, start, user.userId, picks)
+    await saveEntry(database.db, 'nhl', start, user.userId, picks)
     await savePlayer(database.db, { userId: 'player-2', username: 'incomplete' })
-    await saveEntry(database.db, start, 'player-2', [picks[0]])
+    await saveEntry(database.db, 'nhl', start, 'player-2', [picks[0]])
     closeEntries()
     database.sqlite.exec(
       "UPDATE games SET state='final', winner='away', away_score=4, home_score=1",
     )
-    await finalize(database.db, start)
-    await finalize(database.db, start)
+    await finalize(database.db, 'nhl', start)
+    await finalize(database.db, 'nhl', start)
     const rows = database.sqlite.prepare('SELECT clerk_id, points, rank FROM standings').all()
     expect(rows).toEqual([{ clerk_id: user.userId, points: 2, rank: 1 }])
   })
 
   it('does not finalize empty, unfinished, or pre-deadline weekends', async () => {
-    await expect(finalize(database.db, start)).rejects.toThrow('deadline')
+    await expect(finalize(database.db, 'nhl', start)).rejects.toThrow('deadline')
     closeEntries()
-    await expect(finalize(database.db, start)).rejects.toThrow('Every game')
+    await expect(finalize(database.db, 'nhl', start)).rejects.toThrow('Every game')
     database.sqlite.exec('DELETE FROM games')
-    await expect(finalize(database.db, start)).rejects.toThrow('Every game')
+    await expect(finalize(database.db, 'nhl', start)).rejects.toThrow('Every game')
   })
 })
 
@@ -253,5 +258,118 @@ describe('NHL result normalization', () => {
     expect(validStart('2026-02-30')).toBe(false)
     expect(validStart('2026-10-10')).toBe(false)
     expect(validStart(null)).toBe(false)
+  })
+})
+
+describe('multiple leagues', () => {
+  async function addPwhlWeek() {
+    await database.db
+      .prepare('INSERT INTO weekends (league, start_date, season) VALUES (?, ?, ?)')
+      .bind('pwhl', start, '2099-00')
+      .run()
+    await database.db.batch([
+      ...games.map((game) => upsertGame(database.db, 'pwhl', start, game, 'feed')),
+      updateLockTime(database.db, 'pwhl', start),
+    ])
+    return (await getWeek(database.db, 'pwhl', start))!
+  }
+
+  it('keeps entries and pick visibility separate when provider game IDs overlap', async () => {
+    const pwhlWeek = await addPwhlWeek()
+    const pwhlPicks: Pick[] = pwhlWeek.games.map((game, index) => ({
+      gameId: game.id,
+      side: index === 0 ? 'home' : 'away',
+      confidence: index + 1,
+    }))
+    expect(pwhlWeek.games.map((game) => game.sourceId)).toEqual([1, 2])
+    expect(pwhlWeek.games.every((game) => game.id > 2)).toBe(true)
+    await saveEntry(database.db, 'nhl', start, user.userId, picks)
+    expect(
+      (await request('entry', 'PUT', { league: 'pwhl', startDate: start, picks: pwhlPicks }))
+        .status,
+    ).toBe(200)
+    expect((await getEntry(database.db, 'nhl', start, user.userId))?.picks).toEqual(picks)
+    expect((await getEntry(database.db, 'pwhl', start, user.userId))?.picks).toEqual(pwhlPicks)
+    expect(await (await request(`entrants?league=pwhl&start=${start}`)).json()).toEqual({
+      entrants: ['rinkside'],
+    })
+    expect(
+      (await request('entry', 'PUT', { league: 'pwhl', startDate: start, picks })).status,
+    ).toBe(400)
+    await expect(saveEntry(database.db, 'pwhl', start, user.userId, picks)).rejects.toThrow(
+      'another pool',
+    )
+    expect((await getEntry(database.db, 'pwhl', start, user.userId))?.picks).toEqual(pwhlPicks)
+    database.sqlite.exec("UPDATE weekends SET lock_at='2000-01-01T00:00:00Z' WHERE league='pwhl'")
+    expect((await request(`picks?league=nhl&start=${start}`)).status).toBe(403)
+    expect((await request(`picks?league=pwhl&start=${start}`)).status).toBe(200)
+    expect(
+      (await request('entry', 'PUT', { league: 'pwhl', startDate: start, picks: pwhlPicks }))
+        .status,
+    ).toBe(409)
+    expect((await request('entry', 'PUT', { startDate: start, picks })).status).toBe(200)
+  })
+
+  it('combines finalized points from either league without mixing league standings', async () => {
+    const pwhlWeek = await addPwhlWeek()
+    await saveEntry(database.db, 'nhl', start, user.userId, picks)
+    await saveEntry(
+      database.db,
+      'pwhl',
+      start,
+      user.userId,
+      pwhlWeek.games.map((game, index) => ({
+        gameId: game.id,
+        side: 'home',
+        confidence: index + 1,
+      })),
+    )
+    await savePlayer(database.db, { userId: 'player-2', username: 'nhl_only' })
+    await saveEntry(database.db, 'nhl', start, 'player-2', picks)
+    closeEntries()
+    database.sqlite.exec(
+      "UPDATE games SET state='final', winner='home', away_score=1, home_score=2",
+    )
+    await finalize(database.db, 'nhl', start)
+    const before = (await (await request('season?league=all&season=2099-00')).json()) as {
+      standings: { username: string; nhlPoints: number | null; pwhlPoints: number | null }[]
+    }
+    expect(before.standings.find((row) => row.username === 'rinkside')).toMatchObject({
+      nhlPoints: 1,
+      pwhlPoints: null,
+    })
+    await finalize(database.db, 'pwhl', start)
+    const combined = (await (await request('season?league=all&season=2099-00')).json()) as {
+      standings: {
+        username: string
+        points: number
+        nhlPoints: number | null
+        pwhlPoints: number | null
+      }[]
+    }
+    expect(combined.standings).toEqual([
+      expect.objectContaining({ username: 'rinkside', points: 4, nhlPoints: 1, pwhlPoints: 3 }),
+      expect.objectContaining({ username: 'nhl_only', points: 1, nhlPoints: 1, pwhlPoints: null }),
+    ])
+    expect(await (await request('season?league=pwhl&season=2099-00')).json()).toEqual({
+      standings: [{ username: 'rinkside', points: 3, correct: 2, rank: 1 }],
+    })
+  })
+
+  it('scopes admin exclusions and rejects unknown league IDs', async () => {
+    const pwhlWeek = await addPwhlWeek()
+    expect(
+      (
+        await request('admin/remove-game', 'POST', {
+          league: 'pwhl',
+          startDate: start,
+          gameId: pwhlWeek.games[0].id,
+        })
+      ).status,
+    ).toBe(200)
+    expect((await getWeek(database.db, 'pwhl', start))?.games).toHaveLength(1)
+    expect((await getWeek(database.db, 'nhl', start))?.games).toHaveLength(2)
+    expect((await request('weeks?league=other')).status).toBe(400)
+    expect((await request('season?league=other&season=2099-00')).status).toBe(400)
   })
 })
