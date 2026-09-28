@@ -1,0 +1,112 @@
+import type { Weekend, WeekendStatus, Standing, PublicPick } from '../lib/pool'
+import { StandingsList, EntrantsBoard } from './Standings'
+
+interface WeekendResultsProps {
+  week: Weekend
+  demo: boolean
+  displayStatus: WeekendStatus
+  picksUnlocked: boolean
+  signedIn: boolean
+  standings: Standing[]
+  entrants: string[]
+  publicPicks: PublicPick[]
+}
+export function WeekendResults({
+  week,
+  demo,
+  displayStatus,
+  picksUnlocked,
+  signedIn,
+  standings,
+  entrants,
+  publicPicks,
+}: WeekendResultsProps) {
+  const games = week.games
+  return (
+    <div className="results-layout">
+      <div className="results-main">
+        <div className="results-intro">
+          <span className="card-kicker">
+            {displayStatus === 'final'
+              ? demo
+                ? 'SAMPLE RESULTS'
+                : 'OFFICIAL RESULTS'
+              : picksUnlocked
+                ? 'PICKS REVEALED'
+                : 'ENTRIES ARE ROLLING IN'}
+          </span>
+          <h3>
+            {displayStatus === 'final'
+              ? 'THE FINAL HORN.'
+              : picksUnlocked
+                ? 'THE PICKS ARE IN.'
+                : 'WHO’S ON THE BOARD?'}
+          </h3>
+          <p>
+            {displayStatus === 'final'
+              ? 'Every result is in. See how your confidence picks stacked up.'
+              : picksUnlocked
+                ? 'Open a player’s entry to see their picks. Rankings arrive when every game is final or void.'
+                : 'Submitted usernames appear here right away. Picks stay hidden until the entry deadline passes, and rankings arrive after the final game.'}
+          </p>
+        </div>
+        {displayStatus === 'final' && (
+          <StandingsList rows={standings} emptyText="No completed entries for this weekend." />
+        )}
+        <EntrantsBoard
+          usernames={entrants}
+          games={games}
+          picks={publicPicks}
+          unlocked={picksUnlocked}
+          canViewPicks={signedIn}
+        />
+      </div>
+      <aside className="results-aside">
+        <span className="card-kicker">WEEKEND SNAPSHOT</span>
+        <strong>
+          {games.filter((game) => game.state === 'final').length}
+          <small>/{games.length}</small>
+        </strong>
+        <span>GAMES FINAL</span>
+        <div className="board-divider" />
+        <p>
+          <b>{entrants.length}</b> {entrants.length === 1 ? 'player has' : 'players have'} submitted
+          an entry.
+        </p>
+        <p>All times and weekend dates are shown in Eastern time.</p>
+      </aside>
+    </div>
+  )
+}
+export function SeasonResults({
+  week,
+  demo,
+  standings,
+}: {
+  week: Weekend
+  demo: boolean
+  standings: Standing[]
+}) {
+  return (
+    <div className="results-layout">
+      <div className="results-main">
+        <div className="results-intro">
+          <span className="card-kicker">{demo ? 'SAMPLE' : week.season} REGULAR SEASON</span>
+          <h3>EVERY WEEKEND COUNTS.</h3>
+          <p>Points from finalized regular-season weekends add up here.</p>
+        </div>
+        <StandingsList
+          rows={standings}
+          emptyText="The season table starts after the first completed weekend."
+        />
+      </div>
+      <aside className="results-aside">
+        <span className="card-kicker">THE RACE</span>
+        <strong>{week.season}</strong>
+        <span>REGULAR SEASON</span>
+        <div className="board-divider" />
+        <p>Tied totals share the same rank.</p>
+      </aside>
+    </div>
+  )
+}

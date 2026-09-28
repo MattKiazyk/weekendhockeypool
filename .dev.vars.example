@@ -1,0 +1,3 @@
+CLERK_PUBLISHABLE_KEY=pk_test_from_existing_hockey_application
+CLERK_SECRET_KEY=sk_test_from_existing_hockey_application
+ADMIN_CLERK_USER_ID=user_your_clerk_id

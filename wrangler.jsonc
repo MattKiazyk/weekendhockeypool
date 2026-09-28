@@ -5,11 +5,13 @@
   "compatibility_date": "2026-09-27",
   "routes": [{ "pattern": "hockey.mattkiazyk.com", "custom_domain": true }],
   "assets": { "not_found_handling": "single-page-application" },
-  "d1_databases": [{
-    "binding": "DB",
-    "database_name": "hockey-pool",
-    "database_id": "2ac78f44-5754-4419-84a1-86667857b63a",
-    "migrations_dir": "migrations"
-  }],
-  "triggers": { "crons": ["*/15 * * * *"] }
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "hockey-pool",
+      "database_id": "2ac78f44-5754-4419-84a1-86667857b63a",
+      "migrations_dir": "migrations",
+    },
+  ],
+  "triggers": { "crons": ["*/15 * * * *"] },
 }
