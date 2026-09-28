@@ -11,7 +11,7 @@ import { CombinedStandingsList, StandingsList, EntrantsBoard } from './Standings
 interface WeekendResultsProps {
   week: Weekend
   demo: boolean
-  displayStatus: WeekendStatus
+  displayStatus: WeekendStatus | 'upcoming'
   picksUnlocked: boolean
   signedIn: boolean
   standings: Standing[]

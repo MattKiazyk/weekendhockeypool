@@ -9,7 +9,7 @@ const steps = [
     title: 'Pick one winner',
     image: '/about-pick.svg',
     alt: 'Illustration of an away team selected over a home team',
-    text: 'Switch between NHL and PWHL. Every regular-season game from Friday through Sunday appears on its league’s pick sheet. Choose a winner for every game.',
+    text: 'Switch between NHL and PWHL and browse weekends by date. You can see matchups early, then choose a winner for every game once picks open Monday at 8 a.m. Eastern.',
   },
   {
     number: '02',
@@ -123,10 +123,11 @@ function About({ demo, onPlay }: AboutProps) {
               <span className="about-detail-icon" aria-hidden="true">
                 ◷
               </span>
-              <h3>When do entries lock?</h3>
+              <h3>When can I enter?</h3>
               <p>
-                Each league locks at its first scheduled weekend game. If Friday has no games,
-                entries lock at the first Saturday or Sunday game. You can save changes until then.
+                Matchups are visible early. Team and confidence picks open Monday at 8:00 a.m.
+                Eastern before each weekend. Each league then locks at its first scheduled game,
+                whether that game is Friday, Saturday, or Sunday. You can save changes until then.
               </p>
             </article>
             <article>

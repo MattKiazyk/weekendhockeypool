@@ -5,6 +5,7 @@
 Weekend Pools is a React/Vite frontend with a Cloudflare Worker, D1, and Clerk. The canonical production URL is `https://pool.mattkiazyk.com`. Read `README.md` for setup, API behavior, and deployment details. No application router, state-management library, or ORM is needed for the current size of the project.
 
 - Keep `src/App.tsx` focused on composing pages and handling navigation/feedback. Put view-specific state in `src/components/` and data loading/saving in `src/hooks/usePool.ts`.
+- Keep the Picks and Standings weekend date buttons in `src/components/WeekendNav.tsx`. Season shows the current season; Admin uses its own date input.
 - Keep the first-visit Picks guide and its browser-local dismissal in `src/components/PicksIntro.tsx`; keep it mounted across navigation so dismissal also works when storage is blocked.
 - Put domain types and pure rules in `src/lib/pool.ts`; both browser and Worker import it. Keep it free of React, browser APIs, and Cloudflare bindings.
 - Keep supported league IDs and display metadata in `src/lib/leagues.ts`. Each new league needs a Worker feed adapter registered in `worker/feeds.ts`.
@@ -21,6 +22,7 @@ Weekend Pools is a React/Vite frontend with a Cloudflare Worker, D1, and Clerk. 
 - Every weekend, entry, standing, exclusion, and manual correction is scoped to a league. Game feed IDs can overlap across leagues; picks use internal game IDs. One Clerk user may have one entry per league per weekend.
 - A valid entry has every game exactly once and each confidence number 1–N exactly once. Confidence swaps preserve team selections.
 - The earliest retained game determines lock time. A manual game override must determine its own start time even if the NHL feed still reports a different time for that ID.
+- Entries open at 8:00 a.m. America/New_York on the Monday before each weekend. Matchups remain visible before opening, while picks and submissions are disabled. Preserve entries that predate this rule; allow edits only during the open window.
 - Enforce entry deadlines in both application logic and database triggers. Do not bypass or remove the triggers when refactoring writes.
 - Public entrants contain usernames only. Revealed picks require authentication and `hasEntryDeadlinePassed`; a status label alone is insufficient.
 - Admin authorization is checked in `worker/api.ts` before dispatching to `admin.ts`. Client visibility checks are not authorization.

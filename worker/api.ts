@@ -50,7 +50,7 @@ export async function api(request: Request, env: Env): Promise<Response> {
   }
   if (path === '/api/weeks' && request.method === 'GET') {
     const rows = await env.DB.prepare(
-      'SELECT league, start_date, season, status, lock_at, finalized_at FROM weekends WHERE league=? AND EXISTS (SELECT 1 FROM games WHERE games.league=weekends.league AND games.weekend_start=weekends.start_date) ORDER BY start_date DESC LIMIT 24',
+      'SELECT league, start_date, season, status, lock_at, finalized_at FROM weekends WHERE league=? AND EXISTS (SELECT 1 FROM games WHERE games.league=weekends.league AND games.weekend_start=weekends.start_date) ORDER BY start_date DESC',
     )
       .bind(league)
       .all()
@@ -125,6 +125,8 @@ export async function api(request: Request, env: Env): Promise<Response> {
     const bodyStart = body.startDate ?? null
     if (!validStart(bodyStart) || !Array.isArray(body.picks)) return error('Invalid entry', 400)
     const week = await getWeek(env.DB, bodyLeague, bodyStart)
+    if (week?.status === 'open' && Date.now() < Date.parse(week.opensAt))
+      return error('Picks open Monday at 8:00 a.m. Eastern', 409)
     if (!week || !isEntryOpen(week)) return error('Entries are closed', 409)
     const errors = validatePicks(body.picks, week.games)
     if (errors.length) return json({ error: errors[0], errors }, 400)

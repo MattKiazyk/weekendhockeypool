@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { emptyPool, fetchJson, sendJson, type PoolData } from '../lib/api'
-import { getDemoData, readDemoEntry, saveDemoEntry } from '../lib/demo'
+import { getDemoData, readDemoEntry, saveDemoEntry, type PreviewStage } from '../lib/demo'
 import {
   hasEntryDeadlinePassed,
   seasonFor,
@@ -12,7 +12,6 @@ import {
   type PublicPick,
   type Standing,
   type Weekend,
-  type WeekendStatus,
   type WeekListing,
 } from '../lib/pool'
 import type { PoolSession } from '../lib/session'
@@ -21,7 +20,7 @@ export function usePool(
   session: PoolSession,
   league: LeagueId,
   demo: boolean,
-  stage: WeekendStatus,
+  stage: PreviewStage,
   showEntrants: boolean,
 ) {
   const { signedIn, userId, username, getToken } = session
@@ -33,6 +32,7 @@ export function usePool(
   const [loading, setLoading] = useState(!demo)
   const [error, setError] = useState('')
   const [clock, setClock] = useState(Date.now)
+  const currentWeekend = weekendStartAt(clock)
 
   useEffect(() => {
     const timer = window.setInterval(() => setClock(Date.now()), 15000)
@@ -41,10 +41,10 @@ export function usePool(
 
   useEffect(() => {
     if (!demo) return
-    const entry = signedIn && league === 'nhl' ? readDemoEntry() : null
+    const entry = signedIn && league === 'nhl' ? readDemoEntry(selectedWeek ?? undefined) : null
     setData({ ...emptyPool, entry })
     setDraft(entry?.picks ?? [])
-  }, [demo, league, signedIn])
+  }, [demo, league, signedIn, selectedWeek])
 
   useEffect(() => {
     if (demo) return
@@ -70,7 +70,7 @@ export function usePool(
           null,
           options,
         )
-        const seasonId = week?.season ?? seasonFor(selectedWeek ?? weekendStartAt(Date.now()))
+        const seasonId = seasonFor(currentWeekend)
         const seasonRequest = fetchJson<{ standings: Standing[] }>(
           `/api/season?league=${league}&season=${seasonId}`,
           null,
@@ -147,7 +147,7 @@ export function usePool(
     }
     void load()
     return () => controller.abort()
-  }, [demo, league, selectedWeek, signedIn, userId, getToken, reloadKey])
+  }, [demo, league, selectedWeek, signedIn, userId, getToken, reloadKey, currentWeekend])
 
   const deadlinePassed =
     !demo && data.week?.status === 'open' && hasEntryDeadlinePassed(data.week, clock)
@@ -180,7 +180,7 @@ export function usePool(
   }, [pollEntrants, startDate, league])
 
   const visibleData = demo
-    ? getDemoData(league, stage, data.entry, username)
+    ? getDemoData(league, stage, data.entry, username, selectedWeek)
     : dataLeague === league
       ? data
       : emptyPool
@@ -194,7 +194,7 @@ export function usePool(
       updatedAt: timestamp,
     }
     if (demo) {
-      saveDemoEntry(saved)
+      saveDemoEntry(saved, visibleData.week.startDate)
     } else {
       const result = await sendJson<{ updatedAt: string }>('/api/entry', await getToken(), 'PUT', {
         league,

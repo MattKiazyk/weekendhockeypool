@@ -95,8 +95,8 @@ export default function PicksIntro({ active, onAbout }: { active: boolean; onAbo
         </ol>
         <div className="picks-intro-footer">
           <p>
-            <span aria-hidden="true">◷</span>{' '}
-            <strong>Sign in &amp; save before the first game.</strong> Edit until it starts.
+            <span aria-hidden="true">◷</span> <strong>Picks open Monday at 8 a.m. Eastern.</strong>{' '}
+            Sign in and save before the first game.
           </p>
           <button type="button" className="picks-intro-rules" onClick={onAbout}>
             Read the full rules <span aria-hidden="true">→</span>

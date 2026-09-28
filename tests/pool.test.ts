@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   easternDate,
+  entryOpensAt,
   hasEntryDeadlinePassed,
   isEntryOpen,
   isInWeekend,
@@ -76,6 +77,7 @@ describe('pool rules', () => {
       league: 'nhl',
       startDate: '2026-10-09',
       season: '2026-27',
+      opensAt: entryOpensAt('2026-10-09'),
       lockAt: null,
       status: 'open',
       finalizedAt: null,
@@ -105,6 +107,7 @@ describe('pool rules', () => {
       league: 'nhl',
       startDate: '2026-10-09',
       season: '2026-27',
+      opensAt: entryOpensAt('2026-10-09'),
       lockAt: games[0].startUtc,
       status: 'open',
       finalizedAt: null,
@@ -121,6 +124,26 @@ describe('pool rules', () => {
       hasEntryDeadlinePassed({ ...weekend, lockAt: null }, Date.parse(games[0].startUtc) + 1),
     ).toBe(false)
     expect(seasonFor('2027-01-08')).toBe('2026-27')
+  })
+
+  it('opens at Monday 8 a.m. Eastern, including daylight saving changes', () => {
+    expect(entryOpensAt('2027-03-12')).toBe('2027-03-08T13:00:00.000Z')
+    expect(entryOpensAt('2027-03-19')).toBe('2027-03-15T12:00:00.000Z')
+    expect(entryOpensAt('2027-11-05')).toBe('2027-11-01T12:00:00.000Z')
+    expect(entryOpensAt('2027-11-12')).toBe('2027-11-08T13:00:00.000Z')
+    const week: Weekend = {
+      league: 'nhl',
+      startDate: '2027-03-19',
+      season: '2026-27',
+      opensAt: entryOpensAt('2027-03-19'),
+      lockAt: '2027-03-19T23:00:00Z',
+      status: 'open',
+      finalizedAt: null,
+      games,
+    }
+    expect(isEntryOpen(week, Date.parse(week.opensAt) - 1)).toBe(false)
+    expect(isEntryOpen(week, Date.parse(week.opensAt))).toBe(true)
+    expect(isEntryOpen(week, Date.parse(week.lockAt!))).toBe(false)
   })
 
   it('requires one unique side and the complete confidence sequence', () => {

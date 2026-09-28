@@ -1,5 +1,6 @@
 import {
   addDays,
+  entryOpensAt,
   hasEntryDeadlinePassed,
   isWeekendComplete,
   lockTime,
@@ -42,14 +43,15 @@ export async function syncSchedule(
   const retainedAdmin = (existing?.games ?? []).filter((game) => adminIds.has(game.sourceId))
   const weekStatement = db
     .prepare(
-      `INSERT INTO weekends (league, start_date, season, lock_at, last_schedule_sync)
-       VALUES (?, ?, ?, ?, ?) ON CONFLICT(league, start_date) DO UPDATE SET
+      `INSERT INTO weekends (league, start_date, season, opens_at, lock_at, last_schedule_sync)
+       VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(league, start_date) DO UPDATE SET
        lock_at=excluded.lock_at, last_schedule_sync=excluded.last_schedule_sync`,
     )
     .bind(
       league,
       start,
       season,
+      entryOpensAt(start),
       lockTime([...games.filter((game) => !adminIds.has(game.sourceId)), ...retainedAdmin]),
       nowIso(),
     )

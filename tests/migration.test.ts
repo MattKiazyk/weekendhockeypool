@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { DatabaseSync } from 'node:sqlite'
 import { expect, it } from 'vitest'
+import { entryOpensAt } from '../src/lib/pool'
 
 it('preserves populated NHL data while introducing league-scoped records', () => {
   const sqlite = new DatabaseSync(':memory:')
@@ -51,6 +52,51 @@ it('preserves populated NHL data while introducing league-scoped records', () =>
     expect(
       sqlite.prepare('SELECT COUNT(*) AS count FROM games WHERE source_game_id=1').get(),
     ).toEqual({ count: 2 })
+  } finally {
+    sqlite.close()
+  }
+})
+
+it('backfills Eastern opening times without removing early entries', () => {
+  const sqlite = new DatabaseSync(':memory:')
+  try {
+    for (const name of readdirSync('migrations')
+      .filter((name) => name.endsWith('.sql') && name < '0008_entry_open_time.sql')
+      .sort()) {
+      sqlite.exec(readFileSync(`migrations/${name}`, 'utf8'))
+    }
+    sqlite.exec(`
+      INSERT INTO players VALUES ('player-1', 'rinkside', '2026-01-01T00:00:00Z');
+      INSERT INTO weekends (league, start_date, season, lock_at)
+        VALUES ('nhl', '2027-03-12', '2026-27', '2027-03-12T23:00:00Z'),
+               ('nhl', '2027-03-19', '2026-27', '2027-03-19T23:00:00Z'),
+               ('nhl', '2027-11-05', '2027-28', '2027-11-05T23:00:00Z'),
+               ('nhl', '2027-11-12', '2027-28', '2027-11-12T23:00:00Z');
+      INSERT INTO games (id, league, source_game_id, weekend_start, start_utc, eastern_date,
+        away_code, away_name, home_code, home_name)
+        VALUES (1, 'nhl', 1, '2027-03-12', '2027-03-12T23:00:00Z', '2027-03-12',
+          'BOS', 'Boston', 'TOR', 'Toronto');
+      INSERT INTO entries (id, league, weekend_start, clerk_id, submitted_at, updated_at)
+        VALUES (4, 'nhl', '2027-03-12', 'player-1', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+      INSERT INTO picks VALUES (4, 1, 'home', 1);
+    `)
+    sqlite.exec(readFileSync('migrations/0008_entry_open_time.sql', 'utf8'))
+    const rows = sqlite
+      .prepare('SELECT start_date, opens_at FROM weekends ORDER BY start_date')
+      .all() as { start_date: string; opens_at: string }[]
+    expect(rows).toEqual(
+      ['2027-03-12', '2027-03-19', '2027-11-05', '2027-11-12'].map((start_date) => ({
+        start_date,
+        opens_at: entryOpensAt(start_date).replace('.000Z', 'Z'),
+      })),
+    )
+    expect(sqlite.prepare('SELECT id FROM entries').all()).toEqual([{ id: 4 }])
+    expect(sqlite.prepare('SELECT entry_id, game_id FROM picks').all()).toEqual([
+      { entry_id: 4, game_id: 1 },
+    ])
+    expect(() => sqlite.exec("UPDATE entries SET updated_at='2026-02-01' WHERE id=4")).toThrow(
+      'entries are closed',
+    )
   } finally {
     sqlite.close()
   }

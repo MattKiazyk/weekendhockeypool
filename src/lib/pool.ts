@@ -26,6 +26,7 @@ export interface Weekend {
   league: LeagueId
   startDate: string
   season: string
+  opensAt: string
   lockAt: string | null
   status: WeekendStatus
   finalizedAt: string | null
@@ -135,8 +136,27 @@ export function lockTime(games: Game[]): string | null {
   return games.map((game) => game.startUtc).sort()[0]
 }
 
+export function entryOpensAt(startDate: string): string {
+  const monday = addDays(startDate, -4)
+  const noonUtc = new Date(`${monday}T12:00:00Z`)
+  const easternHour = Number(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      hour: 'numeric',
+      hourCycle: 'h23',
+    }).format(noonUtc),
+  )
+  return new Date(noonUtc.getTime() + (8 - easternHour) * 60 * 60 * 1000).toISOString()
+}
+
 export function isEntryOpen(week: Weekend, now = Date.now()): boolean {
-  return week.status === 'open' && !!week.lockAt && now < Date.parse(week.lockAt)
+  return (
+    week.status === 'open' &&
+    Number.isFinite(Date.parse(week.opensAt)) &&
+    now >= Date.parse(week.opensAt) &&
+    !!week.lockAt &&
+    now < Date.parse(week.lockAt)
+  )
 }
 
 export function hasEntryDeadlinePassed(week: Weekend, now = Date.now()): boolean {

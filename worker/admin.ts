@@ -1,5 +1,6 @@
 import {
   easternDate,
+  entryOpensAt,
   isInWeekend,
   seasonFor,
   isWeekendComplete,
@@ -86,11 +87,9 @@ export async function admin(request: Request, env: Env, path: string): Promise<R
     const statements: D1PreparedStatement[] = []
     if (!week) {
       statements.push(
-        env.DB.prepare('INSERT INTO weekends (league, start_date, season) VALUES (?, ?, ?)').bind(
-          league,
-          selected,
-          seasonFor(selected),
-        ),
+        env.DB.prepare(
+          'INSERT INTO weekends (league, start_date, season, opens_at) VALUES (?, ?, ?, ?)',
+        ).bind(league, selected, seasonFor(selected), entryOpensAt(selected)),
       )
     }
     statements.push(

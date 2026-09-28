@@ -137,6 +137,9 @@ it('finalizes a PWHL entry from the schedule result feed', async () => {
     mockFeed([raw])
     const week = await syncSchedule(database.db, 'pwhl', start)
     await savePlayer(database.db, { userId: 'player-1', username: 'rinkside' })
+    database.sqlite
+      .prepare('UPDATE weekends SET opens_at=? WHERE league=?')
+      .run(new Date(Date.now() - 60 * 60 * 1000).toISOString(), 'pwhl')
     await saveEntry(database.db, 'pwhl', start, 'player-1', [
       { gameId: week.games[0].id, side: 'away', confidence: 1 },
     ])

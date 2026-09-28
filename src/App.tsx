@@ -8,9 +8,12 @@ import { SeasonResults, WeekendResults } from './components/Results'
 import SaveToast, { type SaveFeedback } from './components/SaveToast'
 import SiteHeader from './components/SiteHeader'
 import WeekHero from './components/WeekHero'
+import WeekendNav from './components/WeekendNav'
 import { usePool } from './hooks/usePool'
+import type { PreviewStage } from './lib/demo'
 import { isLeague } from './lib/leagues'
 import {
+  entryOpensAt,
   hasEntryDeadlinePassed,
   isEntryOpen,
   seasonFor,
@@ -20,7 +23,6 @@ import {
   type Pick,
   type LeagueId,
   type Weekend,
-  type WeekendStatus,
 } from './lib/pool'
 import type { PoolSession } from './lib/session'
 import { viewFromHash, views, type View } from './lib/views'
@@ -32,7 +34,7 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
     return isLeague(selected) ? selected : 'nhl'
   })
   const [seasonScope, setSeasonScope] = useState<'league' | 'all'>('league')
-  const [stage, setStage] = useState<WeekendStatus>('open')
+  const [stage, setStage] = useState<PreviewStage>('open')
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [saveFeedback, setSaveFeedback] = useState<SaveFeedback | null>(null)
@@ -59,8 +61,11 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
     const onHashChange = () => setView(viewFromHash())
     const onPopState = () => {
       const selected = new URLSearchParams(window.location.search).get('league')
-      setLeague(isLeague(selected) ? selected : 'nhl')
-      setSelectedWeek(null)
+      const nextLeague = isLeague(selected) ? selected : 'nhl'
+      if (nextLeague !== league) {
+        setLeague(nextLeague)
+        setSelectedWeek(null)
+      }
     }
     window.addEventListener('hashchange', onHashChange)
     window.addEventListener('popstate', onPopState)
@@ -68,7 +73,7 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
       window.removeEventListener('hashchange', onHashChange)
       window.removeEventListener('popstate', onPopState)
     }
-  }, [setSelectedWeek])
+  }, [league, setSelectedWeek])
 
   useEffect(() => {
     if (!saveToastVisible) return
@@ -82,28 +87,36 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
     setMessage('')
   }, [league, selectedWeek, session.userId])
 
-  let shownWeek: Weekend | null = week
+  const currentWeekend = weekendStartAt(pool.clock)
+  const currentSeason = seasonFor(currentWeekend)
+  let shownWeek: Weekend | null = view === 'season' ? null : week
   if (!shownWeek && (view === 'season' || (view === 'admin' && session.isAdmin))) {
-    const startDate = selectedWeek ?? weekendStartAt(Date.now())
+    const startDate = view === 'season' ? currentWeekend : (selectedWeek ?? currentWeekend)
     shownWeek = {
       league,
       startDate,
       season: seasonFor(startDate),
+      opensAt: entryOpensAt(startDate),
       lockAt: null,
       status: 'open',
       finalizedAt: null,
       games: [],
     }
   }
-  const open =
-    !!shownWeek && (demo ? shownWeek.status === 'open' : isEntryOpen(shownWeek, pool.clock))
-  const displayStatus =
-    shownWeek?.status === 'open' && shownWeek.lockAt && !open
+  const upcoming =
+    !!shownWeek &&
+    (demo
+      ? stage === 'upcoming'
+      : shownWeek.status === 'open' && pool.clock < Date.parse(shownWeek.opensAt))
+  const open = !!shownWeek && (demo ? stage === 'open' : isEntryOpen(shownWeek, pool.clock))
+  const displayStatus = upcoming
+    ? 'upcoming'
+    : shownWeek?.status === 'open' && shownWeek.lockAt && !open
       ? 'locked'
       : (shownWeek?.status ?? 'open')
   const picksUnlocked =
     !!shownWeek &&
-    (demo ? shownWeek.status !== 'open' : hasEntryDeadlinePassed(shownWeek, pool.clock))
+    (demo ? stage === 'locked' || stage === 'final' : hasEntryDeadlinePassed(shownWeek, pool.clock))
   const heading = views.find((item) => item.id === view)!
 
   function navigateView(next: View) {
@@ -182,7 +195,7 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
           </span>
           <div className="demo-stages">
             <span>View state</span>
-            {(['open', 'locked', 'final'] as const).map((item) => (
+            {(['upcoming', 'open', 'locked', 'final'] as const).map((item) => (
               <button
                 key={item}
                 className={stage === item ? 'active' : ''}
@@ -204,13 +217,15 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
           <>
             <WeekHero
               week={
-                (view === 'season' && !week) ||
+                view === 'season' ||
                 (league === 'pwhl' && !shownWeek?.games.length && !weeks.length)
                   ? null
                   : shownWeek
               }
               league={league}
               status={displayStatus}
+              season={view === 'season' ? currentSeason : undefined}
+              seasonOnly={view === 'season'}
             />
             <div className="content-wrap">
               {error && (
@@ -222,6 +237,13 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
                 <div className="notice success" role="status">
                   {message}
                 </div>
+              )}
+              {!loading && (view === 'picks' || view === 'standings') && (
+                <WeekendNav
+                  weeks={weeks}
+                  activeStart={selectedWeek ?? week?.startDate ?? currentWeekend}
+                  onChange={(start) => setSelectedWeek(start === currentWeekend ? null : start)}
+                />
               )}
               {loading ? (
                 <div className="loading-panel">Loading the weekend slate…</div>
@@ -248,30 +270,18 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
                       <h2>{heading.title}</h2>
                     </div>
                     <div className="heading-actions">
-                      {weeks.length > 1 && (
-                        <select
-                          aria-label="Choose weekend"
-                          value={selectedWeek ?? ''}
-                          onChange={(event) => setSelectedWeek(event.target.value || null)}
-                        >
-                          <option value="">Current weekend</option>
-                          {weeks.map((item) => (
-                            <option key={item.start_date} value={item.start_date}>
-                              {item.start_date}
-                            </option>
-                          ))}
-                        </select>
-                      )}
                       {!!shownWeek.games.length && (
                         <span className={`status-pill ${displayStatus}`}>
                           <i />{' '}
                           {displayStatus === 'open'
                             ? 'ENTRIES OPEN'
-                            : displayStatus === 'locked'
-                              ? 'PICKS LOCKED'
-                              : demo
-                                ? 'RESULTS PREVIEW'
-                                : 'FINAL RESULTS'}
+                            : displayStatus === 'upcoming'
+                              ? 'OPENS MON 8 AM ET'
+                              : displayStatus === 'locked'
+                                ? 'PICKS LOCKED'
+                                : demo
+                                  ? 'RESULTS PREVIEW'
+                                  : 'FINAL RESULTS'}
                         </span>
                       )}
                     </div>
@@ -283,6 +293,7 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
                       draft={draft}
                       entry={entry}
                       open={open}
+                      upcoming={upcoming}
                       picksUnlocked={picksUnlocked}
                       entrants={entrants}
                       publicPicks={publicPicks}
@@ -308,7 +319,7 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
                   )}
                   {view === 'season' && (
                     <SeasonResults
-                      season={shownWeek.season}
+                      season={currentSeason}
                       league={league}
                       scope={seasonScope}
                       onScopeChange={setSeasonScope}

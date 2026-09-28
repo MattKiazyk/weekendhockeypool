@@ -535,13 +535,6 @@ a {
   align-items: center;
   gap: 10px;
 }
-.heading-actions select {
-  background: #111b2a;
-  border: 1px solid #31445d;
-  border-radius: 4px;
-  color: #e8f1ff;
-  padding: 8px;
-}
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -572,6 +565,11 @@ a {
   color: #71a9ff;
   border-color: #365783;
   background: #142b4e;
+}
+.status-pill.upcoming {
+  color: #91bcff;
+  border-color: #395a82;
+  background: #14253e;
 }
 .pick-layout {
   display: grid;
@@ -2915,5 +2913,101 @@ a {
   }
   .combined-standing-list .standing-row strong {
     font-size: 11px;
+  }
+}
+
+.weekend-nav {
+  display: flex;
+  align-items: stretch;
+  gap: 7px;
+  max-width: 800px;
+  margin: 0 0 25px;
+}
+.weekend-nav.compact {
+  display: none;
+}
+.weekend-dates {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  gap: 7px;
+}
+.weekend-date,
+.weekend-step {
+  border: 1px solid #31445d;
+  background: #111b2a;
+  color: #a9bfdc;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.weekend-date {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 7px;
+  text-align: center;
+}
+.weekend-date span,
+.weekend-date small {
+  display: block;
+}
+.weekend-date span {
+  font-family: 'Barlow Condensed', Impact, sans-serif;
+  font-size: 17px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.weekend-date small {
+  margin-top: 2px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+.weekend-date.active {
+  color: #101b2c;
+  background: #f2c44e;
+  border-color: #f2c44e;
+}
+.weekend-date:hover:not(.active),
+.weekend-step:hover:not(:disabled) {
+  border-color: #74a5eb;
+  color: #e8f1ff;
+}
+.weekend-step {
+  flex: 0 0 38px;
+  font-size: 25px;
+  line-height: 1;
+}
+.weekend-step:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.weekend-nav button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+.upcoming-callout {
+  border-color: #395a82;
+}
+.upcoming-note {
+  color: #91bcff;
+}
+@media (max-width: 720px) {
+  .weekend-nav.wide {
+    display: none;
+  }
+  .weekend-nav.compact {
+    display: flex;
+  }
+  .weekend-nav,
+  .weekend-dates {
+    gap: 5px;
+  }
+  .weekend-date {
+    padding: 9px 3px;
+  }
+  .weekend-date span {
+    font-size: 14px;
+  }
+  .weekend-step {
+    flex-basis: 30px;
   }
 }

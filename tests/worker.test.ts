@@ -33,14 +33,15 @@ const picks: Pick[] = [
   { gameId: 2, side: 'home', confidence: 1 },
 ]
 const user = { userId: 'player-1', username: 'rinkside' }
+const alreadyOpen = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
 let database: ReturnType<typeof createTestDatabase>
 
 beforeEach(async () => {
   database = createTestDatabase()
   vi.mocked(auth).mockResolvedValue(user)
   await database.db
-    .prepare('INSERT INTO weekends (league, start_date, season) VALUES (?, ?, ?)')
-    .bind('nhl', start, '2099-00')
+    .prepare('INSERT INTO weekends (league, start_date, season, opens_at) VALUES (?, ?, ?, ?)')
+    .bind('nhl', start, '2099-00', alreadyOpen)
     .run()
   await database.db.batch([
     ...games.map((game) => upsertGame(database.db, 'nhl', start, game, 'feed')),
@@ -124,6 +125,35 @@ describe('entry persistence and visibility', () => {
     expect((await getEntry(database.db, 'nhl', start, user.userId))?.picks).toEqual(picks)
   })
 
+  it('blocks early submission and replacement without deleting an existing entry', async () => {
+    await saveEntry(database.db, 'nhl', start, user.userId, picks)
+    const before = await getEntry(database.db, 'nhl', start, user.userId)
+    const future = new Date(Date.now() + 60 * 60 * 1000).toISOString()
+    database.sqlite.prepare('UPDATE weekends SET opens_at=? WHERE league=?').run(future, 'nhl')
+    const response = await request('entry', 'PUT', { startDate: start, picks })
+    expect(response.status).toBe(409)
+    expect(await response.json()).toHaveProperty('error', 'Picks open Monday at 8:00 a.m. Eastern')
+    await expect(saveEntry(database.db, 'nhl', start, user.userId, picks)).rejects.toThrow(
+      'entries are closed',
+    )
+    expect(() => database.sqlite.exec("UPDATE picks SET side='home' WHERE game_id=1")).toThrow(
+      'entries are closed',
+    )
+    expect(await getEntry(database.db, 'nhl', start, user.userId)).toEqual(before)
+    database.sqlite.prepare('UPDATE weekends SET opens_at=? WHERE league=?').run(alreadyOpen, 'nhl')
+    expect((await request('entry', 'PUT', { startDate: start, picks })).status).toBe(200)
+  })
+
+  it('blocks a new entry before opening in the API and database', async () => {
+    const future = new Date(Date.now() + 60 * 60 * 1000).toISOString()
+    database.sqlite.prepare('UPDATE weekends SET opens_at=? WHERE league=?').run(future, 'nhl')
+    expect((await request('entry', 'PUT', { startDate: start, picks })).status).toBe(409)
+    await expect(saveEntry(database.db, 'nhl', start, user.userId, picks)).rejects.toThrow(
+      'entries are closed',
+    )
+    expect(await getEntry(database.db, 'nhl', start, user.userId)).toBeNull()
+  })
+
   it('rejects admin mutations by other users', async () => {
     vi.mocked(auth).mockResolvedValue({ userId: 'someone-else', username: 'someone' })
     expect(
@@ -134,6 +164,17 @@ describe('entry persistence and visibility', () => {
 })
 
 describe('schedule and results', () => {
+  it('keeps an early entry while allowing a pre-opening schedule correction', async () => {
+    await saveEntry(database.db, 'nhl', start, user.userId, picks)
+    database.sqlite
+      .prepare('UPDATE weekends SET opens_at=? WHERE league=?')
+      .run(new Date(Date.now() + 60 * 60 * 1000).toISOString(), 'nhl')
+    mockSchedule([{ ...raw, id: 2, startTimeUTC: games[1].startUtc }])
+    const week = await syncSchedule(database.db, 'nhl', start)
+    expect(week.games.map((game) => game.id)).toEqual([2])
+    expect((await getEntry(database.db, 'nhl', start, user.userId))?.picks).toEqual([picks[1]])
+  })
+
   it('keeps manual game details and derives the deadline from the retained schedule', async () => {
     await upsertGame(
       database.db,
@@ -264,8 +305,8 @@ describe('NHL result normalization', () => {
 describe('multiple leagues', () => {
   async function addPwhlWeek() {
     await database.db
-      .prepare('INSERT INTO weekends (league, start_date, season) VALUES (?, ?, ?)')
-      .bind('pwhl', start, '2099-00')
+      .prepare('INSERT INTO weekends (league, start_date, season, opens_at) VALUES (?, ?, ?, ?)')
+      .bind('pwhl', start, '2099-00', alreadyOpen)
       .run()
     await database.db.batch([
       ...games.map((game) => upsertGame(database.db, 'pwhl', start, game, 'feed')),

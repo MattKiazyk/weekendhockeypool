@@ -20,6 +20,7 @@ interface PickSheetProps {
   draft: Pick[]
   entry: Entry | null
   open: boolean
+  upcoming: boolean
   picksUnlocked: boolean
   entrants: string[]
   publicPicks: PublicPick[]
@@ -37,6 +38,7 @@ export default function PickSheet({
   draft,
   entry,
   open,
+  upcoming,
   picksUnlocked,
   entrants,
   publicPicks,
@@ -66,6 +68,16 @@ export default function PickSheet({
   return (
     <div className="pick-layout">
       <div className="games-column">
+        {upcoming && (
+          <div className="inline-callout upcoming-callout">
+            <div>
+              <b>Matchups are ready.</b>
+              <span>
+                Picks open Monday at 8:00 a.m. Eastern. Come back then to choose your teams.
+              </span>
+            </div>
+          </div>
+        )}
         {!session.signedIn && open && (
           <div className="inline-callout">
             <div>
@@ -188,6 +200,12 @@ export default function PickSheet({
                 )
               )}
             </>
+          ) : upcoming ? (
+            <div className="locked-note upcoming-note">
+              {entry
+                ? 'Your saved entry is on file. You can change it when picks open Monday at 8:00 a.m. Eastern.'
+                : 'Team picks and submission open Monday at 8:00 a.m. Eastern.'}
+            </div>
           ) : (
             <div className="locked-note">
               {entry ? 'Your entry is locked in.' : 'Entries are closed.'}
