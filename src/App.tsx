@@ -203,7 +203,12 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
         ) : (
           <>
             <WeekHero
-              week={view === 'season' && !week ? null : shownWeek}
+              week={
+                (view === 'season' && !week) ||
+                (league === 'pwhl' && !shownWeek?.games.length && !weeks.length)
+                  ? null
+                  : shownWeek
+              }
               league={league}
               status={displayStatus}
             />
