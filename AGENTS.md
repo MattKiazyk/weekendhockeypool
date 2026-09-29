@@ -2,7 +2,7 @@
 
 ## Project map
 
-Weekend Pools is a React/Vite frontend with a Cloudflare Worker, D1, and Clerk. The canonical production URL is `https://pool.mattkiazyk.com`. Read `README.md` for setup, API behavior, and deployment details. No application router, state-management library, or ORM is needed for the current size of the project.
+Weekly Pools is a React/Vite frontend with a Cloudflare Worker, D1, and Clerk. The canonical production URL is `https://weeklypools.ca`. Read `README.md` for setup, API behavior, and deployment details. No application router, state-management library, or ORM is needed for the current size of the project.
 
 - Keep `src/App.tsx` focused on composing pages and handling navigation/feedback. Put view-specific state in `src/components/` and data loading/saving in `src/hooks/usePool.ts`.
 - Keep the Picks and Standings week buttons in `src/components/WeekendNav.tsx`. Hockey uses weekend dates; NFL uses official week numbers. Season shows the current season; Admin uses its own date input.
@@ -15,8 +15,8 @@ Weekend Pools is a React/Vite frontend with a Cloudflare Worker, D1, and Clerk. 
 - Reuse the request helpers in `src/lib/api.ts`, date formatting in `src/lib/format.ts`, and view metadata in `src/lib/views.ts`.
 - Keep Worker lifecycle handlers in `worker/index.ts`, routing in `api.ts`/`admin.ts`, Clerk verification in `auth.ts`, persistence helpers in `db.ts`, feed mapping in `nhl.ts`, `pwhl.ts`, and `nfl.ts`, adapter selection in `feeds.ts`, syncing in `sync.ts`, and finalization in `standings.ts`.
 - Use `upsertGame` for schedule/manual game writes and `saveEntry` for atomic entry replacement. Preserve existing API response field names unless deliberately migrating both sides.
-- Use Weekend Pools for app branding and sport-neutral general copy; preserve accurate league names, attribution, and rules. Keep the existing logo and visual style.
-- Keep the internal Worker name `weekend-hockey-pool`, D1 name `hockey-pool` and ID, `DB` binding, and legacy browser-storage keys for compatibility. The old `hockey.mattkiazyk.com` custom domain remains for a Cloudflare Single Redirect; its 308 rule is managed separately from Wrangler and enabled only after the new domain and real Clerk flow pass verification. Follow the README cutover procedure.
+- Use Weekly Pools for app branding and sport-neutral general copy; preserve accurate league names, attribution, and rules. Keep the existing logo and visual style.
+- Keep the internal Worker name `weekend-hockey-pool`, D1 name `hockey-pool` and ID, `DB` binding, and legacy browser-storage keys for compatibility. The old `pool.mattkiazyk.com` and `hockey.mattkiazyk.com` custom domains remain for a Cloudflare Single Redirect; their 308 rule is managed separately from Wrangler and enabled only after the new domain and real Clerk flow pass verification. Follow the README cutover procedure.
 
 ## Invariants to preserve
 

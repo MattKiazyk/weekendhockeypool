@@ -35,7 +35,7 @@ function About({ demo, onPlay }: AboutProps) {
         <div className="about-hero-inner">
           <span className="eyebrow">
             <span className="live-dot" /> THE PLAYBOOK <span className="eyebrow-divider">/</span>{' '}
-            WEEKEND POOLS
+            WEEKLY POOLS
           </span>
           <h1>
             MAKE YOUR <em>CALL.</em>

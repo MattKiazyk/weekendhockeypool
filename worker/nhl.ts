@@ -32,7 +32,7 @@ export async function nhl(path: string): Promise<unknown> {
   const response = await fetch(`https://api-web.nhle.com/v1/${path}`, {
     headers: {
       accept: 'application/json',
-      'user-agent': 'Mozilla/5.0 (compatible; WeekendPools/1.0)',
+      'user-agent': 'Mozilla/5.0 (compatible; WeeklyPools/1.0)',
     },
     signal: AbortSignal.timeout(12000),
   })

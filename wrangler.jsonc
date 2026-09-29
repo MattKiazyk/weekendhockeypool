@@ -5,6 +5,7 @@
   "compatibility_date": "2026-09-27",
   // Keep the existing Worker and old hostname; the edge redirect is configured separately.
   "routes": [
+    { "pattern": "weeklypools.ca", "custom_domain": true },
     { "pattern": "pool.mattkiazyk.com", "custom_domain": true },
     { "pattern": "hockey.mattkiazyk.com", "custom_domain": true },
   ],

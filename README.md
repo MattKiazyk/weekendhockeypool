@@ -1,6 +1,6 @@
-# Weekend Pools
+# Weekly Pools
 
-Weekend confidence pools for NHL and PWHL Friday–Sunday games and official NFL regular-season weeks, built with React, Vite, a Cloudflare Worker, D1, and Clerk. Each person can submit one entry per league per pool week. Production runs at [pool.mattkiazyk.com](https://pool.mattkiazyk.com). The old hockey address permanently redirects there, preserving paths and query strings.
+Weekend confidence pools for NHL and PWHL Friday–Sunday games and official NFL regular-season weeks, built with React, Vite, a Cloudflare Worker, D1, and Clerk. Each person can submit one entry per league per pool week. The new canonical address is [weeklypools.ca](https://weeklypools.ca). The previous pool and hockey addresses will redirect there after domain and authentication verification.
 
 ## Local development
 
@@ -15,7 +15,7 @@ npm run dev
 
 Open the Vite URL, normally `http://127.0.0.1:5173`. Without a Clerk publishable key, development shows interactive NHL and NFL previews using checked-in October 2026 fixtures; PWHL shows its coming-soon state. NHL includes nearby sample weekends. The yellow bar switches hockey between upcoming, open, locked, and final states, and NFL between open, locked, final, and offseason states. NHL entries use the legacy `hockey-pool-demo-entry` localStorage key for the main sample weekend and date-suffixed keys for nearby weekends; NFL uses `hockey-pool-demo-entry-nfl`. Clear the corresponding key to reset a preview. Preview mode never submits entries to D1.
 
-For the real authentication flow, copy the configuration templates and fill in development credentials from the existing Clerk application (originally **Hockey**, renamed **Weekend Pools** during cutover). Keep the same application and user IDs:
+For the real authentication flow, copy the configuration templates and fill in development credentials from the existing Clerk application (**Weekly Pools**, originally **Hockey**). Keep the same application and user IDs:
 
 ```sh
 cp .env.example .env
@@ -91,7 +91,7 @@ After UI changes, check desktop and mobile layouts, switch leagues, select and s
 
 ## Production
 
-`wrangler.jsonc` configures both `pool.mattkiazyk.com` and the retained `hockey.mattkiazyk.com` custom domains on the existing Worker, using the same D1 database and 15-minute cron. Configure matching Clerk production keys and the admin user on the Worker. Ensure Clerk allows the production origin.
+`wrangler.jsonc` configures `weeklypools.ca` and the retained `pool.mattkiazyk.com` and `hockey.mattkiazyk.com` custom domains on the existing Worker, using the same D1 database and 15-minute cron. Configure matching Clerk production keys and the admin user on the Worker. Ensure Clerk allows the production origin.
 
 The npm package is `weekend-pools`, but the following compatibility identifiers intentionally retain their old names:
 
@@ -104,48 +104,42 @@ The rebrand changes no API contracts, pool rules, data, or schema and requires n
 
 Before an authorized deployment, run the checks, apply any new D1 migrations to the remote database, and build with `VITE_CLERK_PUBLISHABLE_KEY` set to the production publishable key. Deploy with `npx wrangler deploy`. `public/.assetsignore` excludes Finder metadata from published assets. Build output lives under `dist/client` and `dist/weekend_hockey_pool`; it is generated and should not be edited or committed. Keep previously applied migrations unchanged; add a new numbered migration for schema changes.
 
-### Production cutover record — September 28, 2026
+### Weekly Pools domain cutover — September 29, 2026
 
-- Rebrand commit: `d96b78f`; deployed Worker version: `1caa2b26-c0ee-4f8d-ac31-7696be9440af`.
-- The existing Clerk production instance was migrated in place to `pool.mattkiazyk.com`, retaining its application, users, and secondary-domain scope. Its Frontend API is `clerk.pool.mattkiazyk.com`; its account portal is `accounts.pool.mattkiazyk.com`. All five DNS records are verified and both TLS certificates are issued. Get the current production publishable key from this same Clerk instance when building; the previous hockey-domain key is obsolete.
-- Clerk's application name and home URL are updated. Verification emails use the new sender domain and application name. No social/SSO connections are enabled, so no provider callbacks required changes.
-- The existing Google Analytics property and web stream are named **Weekend Pools**, with the new website URL and unchanged measurement ID `G-911GHGNZ8V`. Realtime received Weekend Pools page views.
-- Cloudflare Single Redirect **Weekend Pools legacy domain** is active with the exact settings below. HTTP/HTTPS root, asset, API, and league-query URLs returned 308 with their paths and queries intact; following the API redirect reached the new host in one hop.
-- Real existing-account sign-in, saved-entry reload, admin visibility, and sign-out were verified on the new domain. Public NHL/PWHL and combined season APIs responded successfully; protected endpoints reject unauthenticated requests. No database migration was required.
-- The existing `*/15 * * * *` scheduled handler completed successfully at **16:00:35 UTC** after cutover, with no logged errors or exceptions. Live browser and Worker API checks also showed no errors.
-- The previous Worker version is `e0845c50-d976-4ccb-bdc8-f11946aa31ff`. Use it as a code reference for rollback, following the matching-key/new-hostname procedure below; a direct restoration of its old Clerk key would break authentication.
+The canonical domain is `https://weeklypools.ca` and the public brand is **Weekly Pools**. The production cutover is complete.
 
-### Domain cutover procedure
+GoDaddy uses Cloudflare nameservers `kia.ns.cloudflare.com` and `robert.ns.cloudflare.com`; authoritative `.ca` and public DNS resolve the delegation. The Free-plan zone connects the apex to the existing Worker. Clerk's existing application was renamed and migrated in place to `weeklypools.ca`, preserving users and its secret. All five DNS-only CNAME records are verified, and Frontend API and account-portal certificates are issued. Application paths use the new domain.
 
-Future deployments and service configuration changes still require an explicit production release request. The following procedure records the cutover and remains the checklist for repeating it safely.
+Worker version `2a37b073-9f50-4c35-a1aa-ef366c02cf5f` is deployed with matching browser and Worker production publishable keys for `clerk.weeklypools.ca`. HTTPS, assets, all three league APIs, combined season totals, real existing-account sign-in, saved 23-game entry after reload, admin access, sign-out, and desktop/mobile rendering were verified. Sign-in updates the application without requiring a full page refresh. No database migration was needed.
 
-1. **Prepare and record the current setup.** Run `npm run format` and `npm run check` with Node 24 and complete desktop/mobile preview verification. Confirm the current deployed version, D1 binding, cron, DNS, and Clerk production domain configuration. Retain the prior release and non-secret configuration for rollback. Schedule any authentication domain change away from entry deadlines. Do not create a replacement Worker, database, or Clerk application.
-2. **Prepare Clerk in the existing application.** Rename its display branding to **Weekend Pools**. Update home/application URLs, permitted origins, email links, and enabled social-login settings to `https://pool.mattkiazyk.com`. If the authentication domain itself must change, follow [Clerk's in-place domain migration](https://clerk.com/docs/guides/development/deployment/changing-domains), retain the existing root/subdomain scope, configure its DNS and certificates, and update enabled OAuth callbacks (and external JWT issuer/JWKS integrations, if any). Changing the Clerk domain generates a new publishable key: update `VITE_CLERK_PUBLISHABLE_KEY` in the production build environment and `CLERK_PUBLISHABLE_KEY` on the Worker together, then rebuild. Keep secrets out of browser variables and source control. DNS propagation can cause an authentication interruption; verify the real flow before redirecting visitors.
-3. **Deploy and verify the new hostname.** Build with the matching production Clerk key and deploy the existing Worker with both custom domains. Wait for `pool.mattkiazyk.com` DNS and TLS to become active, keeping the old hostname's proxied DNS and TLS coverage. Verify the new site, assets, public API responses, league switching, existing-account sign-in/sign-out, existing saved entries, deadline/privacy enforcement, and admin access. Preview and mocked tests do not establish that production Clerk works. Do not enable the redirect until these checks pass.
-4. **Update analytics and enable the edge redirect.** Keep measurement ID `G-911GHGNZ8V`. Rename the existing Google Analytics property/web stream to **Weekend Pools**, update its website URL, and verify events from the new hostname in Realtime; preserve the existing stream and history. See [Google Analytics settings](https://support.google.com/analytics/answer/9304776?hl=en). In the `mattkiazyk.com` Cloudflare zone, add the Single Redirect below without replacing unrelated rules. The rule runs at the edge for pages, static assets, and API requests; Wrangler's custom-domain configuration does not create it.
+The existing Google Analytics property and web stream are **Weekly Pools**, with stream URL `https://weeklypools.ca` and unchanged measurement ID `G-911GHGNZ8V`. The active **Weekly Pools legacy domains** Single Redirect sends both `pool.mattkiazyk.com` and `hockey.mattkiazyk.com` directly to the new domain with status 308. HTTP and HTTPS root, asset, API, and league links were verified to preserve paths and query strings. Sampled Worker API requests returned successful responses without exceptions; a post-cutover scheduled sync has not yet been observed.
 
-   | Setting               | Value                                                          |
-   | --------------------- | -------------------------------------------------------------- |
-   | Name                  | Weekend Pools legacy domain                                    |
-   | Match expression      | `(http.host eq "hockey.mattkiazyk.com")`                       |
-   | Redirect type         | Dynamic                                                        |
-   | Target expression     | `concat("https://pool.mattkiazyk.com", http.request.uri.path)` |
-   | Status                | `308` (permanent, preserves request method)                    |
-   | Preserve query string | Enabled                                                        |
+The procedure below documents the cutover for future maintenance:
 
-   The host-only match handles both HTTP and HTTPS. Keep the old hostname proxied and covered by TLS. See [Cloudflare Single Redirect settings](https://developers.cloudflare.com/rules/url-forwarding/single-redirects/settings/). Existing open tabs may need a reload and sign-in on the new hostname; redirects do not migrate authentication or browser storage.
+1. Add `weeklypools.ca` to the existing Cloudflare account and select the Free plan. Review imported DNS records and replace GoDaddy's nameservers with the exact pair assigned by Cloudflare. Wait for the zone to become active.
+2. Update the existing Clerk application to **Weekly Pools** and migrate its production domain in place to `weeklypools.ca`, preserving all existing users. Follow [Clerk's domain migration instructions](https://clerk.com/docs/guides/development/deployment/changing-domains). Configure its requested DNS records, wait for DNS and TLS verification, and update application URLs and allowed origins. Use the new matching production publishable key for both `VITE_CLERK_PUBLISHABLE_KEY` in the build and `CLERK_PUBLISHABLE_KEY` on the Worker. Keep the existing secret and user IDs.
+3. Run `npm run format` and `npm run check` with Node 24, then deploy the existing Worker with `npx wrangler deploy`. Retain `pool.mattkiazyk.com` and `hockey.mattkiazyk.com` as custom domains. No database migration is needed for this rebrand.
+4. Verify the new domain's HTTPS, assets, APIs, desktop/mobile navigation, real existing-account sign-in/sign-out, saved entries, and admin access. Preview and mocked tests do not establish that production Clerk works.
+5. In the `mattkiazyk.com` zone, update the existing legacy Single Redirect to target the new domain directly and include both old hosts. Preserve unrelated rules:
 
-5. **Verify the cutover and observe the next sync.** Confirm old URLs redirect to the same path and query on the new hostname without loops. Check the homepage, `/logo-concepts/04-center-ice-roundel.png`, `/api/week?league=nhl`, and `/?league=pwhl`. Check browser navigation after following old links, the canonical/social metadata, and both mobile and desktop layouts. Inspect Worker authentication/API errors and confirm the existing cron runs at the next 15-minute interval. Keep the old redirect indefinitely for bookmarks.
+   | Setting               | Value                                                            |
+   | --------------------- | ---------------------------------------------------------------- |
+   | Name                  | Weekly Pools legacy domains                                      |
+   | Match expression      | `(http.host in {"pool.mattkiazyk.com" "hockey.mattkiazyk.com"})` |
+   | Redirect type         | Dynamic                                                          |
+   | Target expression     | `concat("https://weeklypools.ca", http.request.uri.path)`        |
+   | Status                | `308`                                                            |
+   | Preserve query string | Enabled                                                          |
 
-   ```sh
-   curl -sSI http://hockey.mattkiazyk.com/
-   curl -sSI https://hockey.mattkiazyk.com/logo-concepts/04-center-ice-roundel.png
-   curl -sS -D - -o /dev/null 'https://hockey.mattkiazyk.com/api/week?league=nhl'
-   curl -sSI 'https://hockey.mattkiazyk.com/?league=pwhl'
-   curl -sSI https://pool.mattkiazyk.com/
-   curl -fsS 'https://pool.mattkiazyk.com/api/week?league=nhl'
-   ```
+   Keep both old hosts proxied with TLS coverage. Enable this redirect only after the new domain and real Clerk flow pass verification. See [Cloudflare Single Redirect settings](https://developers.cloudflare.com/rules/url-forwarding/single-redirects/settings/).
 
-**Rollback:** Before redirect activation, restore the previous app and matching Clerk configuration if needed. Once permanent redirects are enabled, keep `pool.mattkiazyk.com` operational because browsers may cache them. Roll back application code on the new hostname, rebuilding the previous version with the active Clerk publishable key and retaining both custom domains; do not redirect the new hostname back to the old one. No database rollback is needed for this rebrand.
+6. Rename the existing Google Analytics property and web stream to **Weekly Pools**, change its website URL to `https://weeklypools.ca`, and preserve measurement ID `G-911GHGNZ8V` and historical data. Verify Realtime traffic.
+7. Verify HTTP and HTTPS old links preserve paths and queries and redirect directly to the new host. Check `/`, `/logo-concepts/04-center-ice-roundel.png`, `/api/week?league=nhl`, and `/?league=pwhl`. Observe the next scheduled sync and check Worker authentication/API errors.
+
+**Rollback:** Keep the new hostname operational after enabling permanent redirects, because browsers may cache them. Roll back code with the active Clerk publishable key and retain all custom domains. Do not redirect the new domain back to an old one.
+
+### Previous deployment reference
+
+The September 28 release used commit `d96b78f` and Worker version `1caa2b26-c0ee-4f8d-ac31-7696be9440af`. Clerk was migrated in place to `pool.mattkiazyk.com`; its Frontend API is `clerk.pool.mattkiazyk.com` and account portal is `accounts.pool.mattkiazyk.com`. Existing-account sign-in, saved entries, admin visibility, sign-out, APIs, and cron were verified. The hockey-domain 308 redirect was active. These are historical settings, not verification of the new domain.
 
 See [AGENTS.md](AGENTS.md) for maintenance guidance.
