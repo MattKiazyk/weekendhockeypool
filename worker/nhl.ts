@@ -83,6 +83,32 @@ export async function getNhlSchedule(start: string): Promise<{ games: Game[]; se
   }
 }
 
+export async function getNhlRecords(season: string): Promise<Map<string, string>> {
+  const body = (await nhl('standings/now')) as {
+    standings?: {
+      teamAbbrev?: { default?: string }
+      seasonId?: number
+      wins?: number
+      losses?: number
+      otLosses?: number
+    }[]
+  }
+  if (!Array.isArray(body.standings)) throw new Error('NHL standings response is invalid')
+  const seasonId = Number(`${season.slice(0, 4)}20${season.slice(5)}`)
+  const records = new Map<string, string>()
+  for (const row of body.standings) {
+    if (row.seasonId !== seasonId) throw new Error('NHL standings season does not match')
+    if (
+      !row.teamAbbrev?.default ||
+      ![row.wins, row.losses, row.otLosses].every((count) => Number.isInteger(count) && count! >= 0)
+    )
+      throw new Error('NHL team record is invalid')
+    records.set(row.teamAbbrev.default, `${row.wins}-${row.losses}-${row.otLosses}`)
+  }
+  if (!records.size) throw new Error('NHL standings are empty')
+  return records
+}
+
 export async function getNhlResults(week: Weekend): Promise<Map<number, GameResult>> {
   const days = [week.startDate, addDays(week.startDate, 1), addDays(week.startDate, 2)]
   const responses = (await Promise.all(days.map((date) => nhl(`score/${date}`)))) as {

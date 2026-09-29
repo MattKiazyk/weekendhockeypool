@@ -59,6 +59,11 @@ export async function getWeek(
     .prepare('SELECT * FROM games WHERE league = ? AND weekend_start = ? ORDER BY start_utc, id')
     .bind(league, start)
     .all<GameRow>()
+  const records = await db
+    .prepare('SELECT team_code, record FROM team_records WHERE league=? AND weekend_start=?')
+    .bind(league, start)
+    .all<{ team_code: string; record: string }>()
+  const byTeam = new Map(records.results.map((row) => [row.team_code, row.record]))
   const status =
     week.status === 'final'
       ? 'final'
@@ -74,7 +79,14 @@ export async function getWeek(
     lockAt: week.lock_at,
     status,
     finalizedAt: week.finalized_at,
-    games: rows.results.map(fromRow),
+    games: rows.results.map((row) => {
+      const game = fromRow(row)
+      return {
+        ...game,
+        away: { ...game.away, record: byTeam.get(game.away.code) ?? null },
+        home: { ...game.home, record: byTeam.get(game.home.code) ?? null },
+      }
+    }),
   }
 }
 

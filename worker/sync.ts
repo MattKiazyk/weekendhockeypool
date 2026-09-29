@@ -1,5 +1,6 @@
 import {
   addDays,
+  easternDate,
   entryOpensAt,
   hasEntryDeadlinePassed,
   isWeekendComplete,
@@ -118,8 +119,67 @@ export async function syncResults(
   return updated
 }
 
+export function recordRefreshDue(now = Date.now()): boolean {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(now)
+  const minute = Number(parts.find((part) => part.type === 'minute')?.value)
+  return parts.find((part) => part.type === 'hour')?.value === '07' && minute >= 30 && minute < 45
+}
+
+export async function syncTeamRecords(
+  db: D1Database,
+  league: LeagueId,
+  start: string,
+  now = Date.now(),
+): Promise<void> {
+  const week = await getWeek(db, league, start)
+  if (
+    !week ||
+    week.status !== 'open' ||
+    !week.lockAt ||
+    now >= Date.parse(week.lockAt) ||
+    easternDate(now) < easternDate(week.opensAt) ||
+    !week.games.length
+  )
+    return
+  const live = await db
+    .prepare("SELECT 1 FROM games WHERE league=? AND state='live' AND start_utc > ? LIMIT 1")
+    .bind(league, new Date(now - 18 * 60 * 60 * 1000).toISOString())
+    .first()
+  if (live) return
+  const records = await feedFor(league).records(week.season)
+  const codes = new Set(week.games.flatMap((game) => [game.away.code, game.home.code]))
+  if ([...codes].some((code) => !records.has(code)))
+    throw new Error(`${league.toUpperCase()} standings are missing a pool team`)
+  const current = await getWeek(db, league, start)
+  if (
+    !current ||
+    current.status !== 'open' ||
+    !current.lockAt ||
+    Date.now() >= Date.parse(current.lockAt)
+  )
+    return
+  const updatedAt = nowIso()
+  await db.batch(
+    [...codes].map((code) =>
+      db
+        .prepare(
+          `INSERT INTO team_records (league, weekend_start, team_code, record, updated_at)
+         VALUES (?, ?, ?, ?, ?) ON CONFLICT(league, weekend_start, team_code) DO UPDATE SET
+         record=excluded.record, updated_at=excluded.updated_at`,
+        )
+        .bind(league, start, code, records.get(code)!, updatedAt),
+    ),
+  )
+}
+
 export async function scheduled(env: Env): Promise<void> {
-  const current = weekendStartAt(Date.now())
+  const runAt = Date.now()
+  const current = weekendStartAt(runAt)
   const next = addDays(current, 7)
   const dailyRefresh = new Date().getUTCHours() === 12 && new Date().getUTCMinutes() < 15
   for (const { id: league } of leagues.filter((item) => item.id !== 'nfl')) {
@@ -146,6 +206,20 @@ export async function scheduled(env: Env): Promise<void> {
     }
   } catch (cause) {
     console.error('NFL schedule sync failed', cause)
+  }
+  if (recordRefreshDue(runAt)) {
+    const rows = await env.DB.prepare(
+      "SELECT league, start_date FROM weekends WHERE status='open' AND lock_at > ? ORDER BY start_date",
+    )
+      .bind(nowIso())
+      .all<{ league: LeagueId; start_date: string }>()
+    for (const row of rows.results) {
+      try {
+        await syncTeamRecords(env.DB, row.league, row.start_date, runAt)
+      } catch (cause) {
+        console.error(`Team record sync failed for ${row.league} ${row.start_date}`, cause)
+      }
+    }
   }
   const pending = await env.DB.prepare(
     "SELECT league, start_date FROM weekends WHERE status!='final' AND lock_at IS NOT NULL AND lock_at <= ? ORDER BY start_date DESC LIMIT 12",

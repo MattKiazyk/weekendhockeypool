@@ -71,6 +71,41 @@ async function scoreboard(year: number, week: number): Promise<NflScoreboard> {
   return body
 }
 
+export async function getNflRecords(season: string): Promise<Map<string, string>> {
+  const year = Number(season.slice(0, 4))
+  const response = await fetch(
+    `https://site.api.espn.com/apis/v2/sports/football/nfl/standings?season=${year}&seasontype=2`,
+    {
+      headers: { accept: 'application/json', 'user-agent': 'curl/8.7.1' },
+      signal: AbortSignal.timeout(12000),
+    },
+  )
+  if (!response.ok) throw new Error(`NFL standings feed returned ${response.status}`)
+  const body = (await response.json()) as {
+    children?: {
+      standings?: {
+        entries?: { team?: { abbreviation?: string }; stats?: { name: string; value: number }[] }[]
+      }
+    }[]
+  }
+  if (!Array.isArray(body.children)) throw new Error('NFL standings response is invalid')
+  const records = new Map<string, string>()
+  for (const entry of body.children.flatMap((group) => group.standings?.entries ?? [])) {
+    const code = entry.team?.abbreviation
+    const counts = Object.fromEntries((entry.stats ?? []).map((stat) => [stat.name, stat.value]))
+    if (
+      !code ||
+      !['wins', 'losses', 'ties'].every(
+        (name) => Number.isInteger(counts[name]) && counts[name] >= 0,
+      )
+    )
+      throw new Error('NFL team record is invalid')
+    records.set(code, `${counts.wins}-${counts.losses}-${counts.ties}`)
+  }
+  if (!records.size) throw new Error('NFL standings are empty')
+  return records
+}
+
 export function weekFromNflCalendar(entry: NflCalendarEntry, seasonYear: number): NflWeek {
   const number = Number(entry.value)
   if (

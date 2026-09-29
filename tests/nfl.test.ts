@@ -191,6 +191,8 @@ it('hides unreleased weeks and enforces opening in API and D1 while retaining th
     expect(week?.weekNumber).toBe(4)
     expect(week?.lockAt).toBe(opener.date.replace('Z', '.000Z'))
     database.sqlite.exec("UPDATE weekends SET lock_at='2099-10-01T00:00:00Z' WHERE league='nfl'")
+    // SQLite triggers use real wall time rather than the mocked Date.now above.
+    database.sqlite.exec("UPDATE weekends SET opens_at='2099-09-29T12:00:00Z' WHERE league='nfl'")
     const gameIds = week!.games.map((game) => game.id)
     const picks = gameIds.map((gameId, index) => ({
       gameId,

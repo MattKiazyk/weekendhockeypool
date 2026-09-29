@@ -10,6 +10,7 @@ Weekend Pools is a React/Vite frontend with a Cloudflare Worker, D1, and Clerk. 
 - Put domain types and pure rules in `src/lib/pool.ts`; both browser and Worker import it. Keep it free of React, browser APIs, and Cloudflare bindings.
 - Keep supported league IDs and display metadata in `src/lib/leagues.ts`. Each new league needs a Worker feed adapter registered in `worker/feeds.ts`. NFL feed normalization and official-week discovery belong in `worker/nfl.ts`.
 - Keep league-tab availability loading in `src/hooks/usePool.ts`, the released/open-week check in `worker/api.ts`, and its compact indicator in `src/components/LeagueTabs.tsx`. The indicator must use entry opening and deadline rules, not a status label alone.
+- Keep official team-record feed parsing in each league's Worker adapter, daily snapshot scheduling in `worker/sync.ts`, and Picks display in `src/components/Matchup.tsx`. Snapshots belong to a league and pick week and freeze at its entry deadline.
 - Keep demo fixtures/storage in `src/lib/demo.ts` and render preview and live data through the same components. Preview is development-only and must never write to the API.
 - Reuse the request helpers in `src/lib/api.ts`, date formatting in `src/lib/format.ts`, and view metadata in `src/lib/views.ts`.
 - Keep Worker lifecycle handlers in `worker/index.ts`, routing in `api.ts`/`admin.ts`, Clerk verification in `auth.ts`, persistence helpers in `db.ts`, feed mapping in `nhl.ts`, `pwhl.ts`, and `nfl.ts`, adapter selection in `feeds.ts`, syncing in `sync.ts`, and finalization in `standings.ts`.

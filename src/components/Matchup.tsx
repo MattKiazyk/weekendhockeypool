@@ -23,7 +23,7 @@ function TeamButton({
       disabled={disabled}
       onClick={onClick}
       aria-pressed={selected}
-      aria-label={`Pick ${team.name} to win`}
+      aria-label={`Pick ${team.name} to win; season record ${team.record ?? 'unavailable'}`}
     >
       <span className="pick-indicator" aria-hidden="true">
         {selected ? '✓' : '+'}
@@ -39,6 +39,7 @@ function TeamButton({
           {side.toUpperCase()}
           {game.state === 'final' ? ` · ${side === 'away' ? game.awayScore : game.homeScore}` : ''}
         </small>
+        <small className="team-record">{team.record ?? 'Record unavailable'}</small>
       </span>
     </button>
   )

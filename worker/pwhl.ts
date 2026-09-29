@@ -41,12 +41,17 @@ export interface PwhlGame {
   game_type: string
 }
 
-async function pwhl(view: string, seasonId?: string): Promise<Record<string, unknown>> {
+async function pwhl(
+  view: string,
+  seasonId?: string,
+  extra: Record<string, string> = {},
+): Promise<Record<string, unknown>> {
   const url = new URL('https://lscluster.hockeytech.com/feed/index.php')
   url.search = new URLSearchParams({
     feed: 'modulekit',
     view,
     ...(seasonId ? { season_id: seasonId } : {}),
+    ...extra,
     key: '446521baf8c38984',
     client_code: 'pwhl',
   }).toString()
@@ -62,6 +67,35 @@ async function pwhl(view: string, seasonId?: string): Promise<Record<string, unk
   if (!siteKit || typeof siteKit !== 'object' || 'Error' in siteKit || 'error' in siteKit)
     throw new Error('PWHL feed returned an error')
   return siteKit as Record<string, unknown>
+}
+
+function standingsCount(value: unknown): number {
+  const count = value === '' ? 0 : Number(value)
+  if (!Number.isSafeInteger(count) || count < 0) throw new Error('PWHL team record is invalid')
+  return count
+}
+
+export async function getPwhlRecords(season: string): Promise<Map<string, string>> {
+  const selected = await regularSeason(season)
+  if (!selected) throw new Error('PWHL regular season is unavailable')
+  const body = await pwhl('statviewtype', selected.season_id, {
+    stat: 'conference',
+    type: 'standings',
+  })
+  if (!Array.isArray(body.Statviewtype)) throw new Error('PWHL standings response is invalid')
+  const records = new Map<string, string>()
+  for (const row of body.Statviewtype as Record<string, unknown>[]) {
+    if (!row.team_code) continue // Group headings are included in this feed.
+    const wins = standingsCount(row.regulation_wins)
+    const overtimeWins = standingsCount(row.non_reg_wins)
+    const overtimeLosses = standingsCount(row.non_reg_losses)
+    const losses = standingsCount(row.losses)
+    if (wins + overtimeWins + overtimeLosses + losses !== standingsCount(row.games_played))
+      throw new Error('PWHL team record does not match games played')
+    records.set(String(row.team_code), `${wins}-${overtimeWins}-${overtimeLosses}-${losses}`)
+  }
+  if (!records.size) throw new Error('PWHL standings are empty')
+  return records
 }
 
 async function regularSeason(season: string): Promise<PwhlSeason | null> {

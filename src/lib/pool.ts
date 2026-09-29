@@ -7,6 +7,7 @@ export interface Team {
   code: string
   name: string
   logo: string | null
+  record?: string | null
 }
 
 export interface Game {

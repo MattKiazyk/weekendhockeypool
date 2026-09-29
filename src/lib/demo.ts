@@ -118,16 +118,30 @@ export function getDemoData(
   const sample = selectedDemoWeek(league, selectedWeek)
   const currentEntry = entry && !validatePicks(entry.picks, sample.games).length ? entry : null
   const shownStage = stage === 'offseason' ? 'final' : stage
+  const teamCodes = [
+    ...new Set(sample.games.flatMap((game) => [game.away.code, game.home.code])),
+  ].sort()
+  const records = new Map(
+    teamCodes.map((code, index) => [
+      code,
+      league === 'nfl' ? `${(index % 4) + 1}-${index % 3}-0` : `${(index % 5) + 2}-${index % 3}-1`,
+    ]),
+  )
+  const gamesWithRecords = sample.games.map((game) => ({
+    ...game,
+    away: { ...game.away, record: records.get(game.away.code) ?? null },
+    home: { ...game.home, record: records.get(game.home.code) ?? null },
+  }))
   const games =
     shownStage === 'final'
-      ? sample.games.map((game, index) => ({
+      ? gamesWithRecords.map((game, index) => ({
           ...game,
           state: 'final' as const,
           awayScore: index % 3 === 0 ? 4 : 2,
           homeScore: index % 3 === 0 ? 2 : 4,
           winner: index % 3 === 0 ? ('away' as const) : ('home' as const),
         }))
-      : sample.games
+      : gamesWithRecords
   const publicPicks: PublicPick[] = []
   if (shownStage === 'locked' || shownStage === 'final') {
     players.forEach((name, playerIndex) => {

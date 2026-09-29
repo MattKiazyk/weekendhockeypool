@@ -1,7 +1,7 @@
 import type { Game, LeagueId, Side, Weekend } from '../src/lib/pool'
-import { getNhlResults, getNhlSchedule } from './nhl'
-import { getPwhlResults, getPwhlSchedule } from './pwhl'
-import { getNflResults, getNflSchedule } from './nfl'
+import { getNhlRecords, getNhlResults, getNhlSchedule } from './nhl'
+import { getPwhlRecords, getPwhlResults, getPwhlSchedule } from './pwhl'
+import { getNflRecords, getNflResults, getNflSchedule } from './nfl'
 
 export interface GameResult {
   state: Game['state']
@@ -20,12 +20,13 @@ export interface WeekSchedule {
 interface LeagueFeed {
   schedule(start: string): Promise<WeekSchedule>
   results(week: Weekend): Promise<Map<number, GameResult>>
+  records(season: string): Promise<Map<string, string>>
 }
 
 const feeds: Record<LeagueId, LeagueFeed> = {
-  nhl: { schedule: getNhlSchedule, results: getNhlResults },
-  pwhl: { schedule: getPwhlSchedule, results: getPwhlResults },
-  nfl: { schedule: getNflSchedule, results: getNflResults },
+  nhl: { schedule: getNhlSchedule, results: getNhlResults, records: getNhlRecords },
+  pwhl: { schedule: getPwhlSchedule, results: getPwhlResults, records: getPwhlRecords },
+  nfl: { schedule: getNflSchedule, results: getNflResults, records: getNflRecords },
 }
 
 export function feedFor(league: LeagueId): LeagueFeed {
