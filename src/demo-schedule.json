@@ -467,5 +467,6 @@
       "sourceId": 2026020039
     }
   ],
-  "league": "nhl"
+  "league": "nhl",
+  "weekNumber": null
 }

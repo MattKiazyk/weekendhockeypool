@@ -1,4 +1,10 @@
-import type { LeagueId, Weekend, WeekendStatus } from '../lib/pool'
+import {
+  easternDate,
+  seasonFor,
+  type LeagueId,
+  type Weekend,
+  type WeekendStatus,
+} from '../lib/pool'
 import { formatSlateDates, formatTime } from '../lib/format'
 
 export default function WeekHero({
@@ -15,22 +21,42 @@ export default function WeekHero({
   seasonOnly?: boolean
 }) {
   const count = week?.games.length ?? 0
+  const nfl = league === 'nfl'
+  const gameDates = week?.games.map((game) => game.easternDate).sort() ?? []
+  const title = seasonOnly
+    ? nfl
+      ? `${(season ?? week?.season ?? '').slice(0, 4)} SEASON`
+      : `${(season ?? week?.season ?? '').replace('-', '–')} SEASON`
+    : week
+      ? nfl && gameDates.length
+        ? formatSlateDates(gameDates[0], gameDates[gameDates.length - 1])
+        : formatSlateDates(week.startDate)
+      : nfl
+        ? 'NFL OFFSEASON'
+        : 'NEXT WEEKEND'
   return (
     <section className="hero slate-hero">
       <div className="hero-lines" aria-hidden="true" />
       <div className="hero-content">
         <div className="eyebrow">
           <span className="live-dot" /> {league.toUpperCase()} REGULAR SEASON{' '}
-          <span className="eyebrow-divider">/</span> {season ?? week?.season ?? '2026–27'}
+          <span className="eyebrow-divider">/</span>{' '}
+          {nfl
+            ? (season ?? week?.season ?? seasonFor(easternDate(Date.now()))).slice(0, 4)
+            : (season ?? week?.season ?? seasonFor(easternDate(Date.now())))}
         </div>
         <div className="slate-summary">
           <div className="slate-date">
             <span className="slate-label">
-              {seasonOnly ? 'CURRENT SEASON · STANDINGS' : 'FRIDAY–SUNDAY · WEEKEND SLATE'}
+              {seasonOnly
+                ? 'SEASON STANDINGS'
+                : nfl
+                  ? week?.weekNumber
+                    ? `NFL WEEK ${week.weekNumber} · OFFICIAL SLATE`
+                    : 'NFL WEEKLY POOL'
+                  : 'FRIDAY–SUNDAY · WEEKEND SLATE'}
             </span>
-            <h1>
-              {seasonOnly ? season : week ? formatSlateDates(week.startDate) : 'NEXT WEEKEND'}
-            </h1>
+            <h1>{title}</h1>
           </div>
           {!seasonOnly && (
             <div className="slate-stat">
@@ -55,7 +81,7 @@ export default function WeekHero({
                 {status === 'final'
                   ? 'RESULTS'
                   : status === 'upcoming'
-                    ? 'PICKS OPEN MONDAY'
+                    ? `PICKS OPEN ${nfl ? 'TUESDAY' : 'MONDAY'}`
                     : 'ENTRY DEADLINE'}
               </span>
             </div>

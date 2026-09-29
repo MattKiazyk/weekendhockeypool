@@ -56,6 +56,10 @@ export default function PickSheet({
   const numbers = confidenceNumbers(games.length)
   const used = new Set(draft.map((pick) => pick.confidence))
   const remaining = numbers.filter((number) => !used.has(number))
+  const days =
+    week.league === 'nfl'
+      ? [...new Set(games.map((game) => game.easternDate))].sort()
+      : [0, 1, 2].map((offset) => addDays(week.startDate, offset))
   async function changeAlias() {
     try {
       await session.setUsername(alias.trim())
@@ -73,7 +77,8 @@ export default function PickSheet({
             <div>
               <b>Matchups are ready.</b>
               <span>
-                Picks open Monday at 8:00 a.m. Eastern. Come back then to choose your teams.
+                Picks open {week.league === 'nfl' ? 'Tuesday' : 'Monday'} at 8:00 a.m. Eastern. Come
+                back then to choose your teams.
               </span>
             </div>
           </div>
@@ -82,7 +87,7 @@ export default function PickSheet({
           <div className="inline-callout">
             <div>
               <b>Get in on the action.</b>
-              <span>Sign in to make your picks for this weekend.</span>
+              <span>Sign in to make your picks for this slate.</span>
             </div>
             <button onClick={session.signIn}>Sign in to play →</button>
           </div>
@@ -106,15 +111,14 @@ export default function PickSheet({
             </div>
           </div>
         )}
-        {[0, 1, 2].map((offset) => {
-          const date = addDays(week.startDate, offset)
+        {days.map((date, offset) => {
           const dayGames = games.filter((game) => game.easternDate === date)
           const [dayName, ...dayDate] = formatDay(date).toUpperCase().split(',')
           return (
             <section className="day-section" key={date}>
               <div className="day-heading">
                 <div>
-                  <span className="day-index">0{offset + 1}</span>
+                  <span className="day-index">{String(offset + 1).padStart(2, '0')}</span>
                   <h3>{dayName}</h3>
                   <span className="day-date">{dayDate.join(',').trim()}</span>
                 </div>
@@ -203,8 +207,8 @@ export default function PickSheet({
           ) : upcoming ? (
             <div className="locked-note upcoming-note">
               {entry
-                ? 'Your saved entry is on file. You can change it when picks open Monday at 8:00 a.m. Eastern.'
-                : 'Team picks and submission open Monday at 8:00 a.m. Eastern.'}
+                ? `Your saved entry is on file. You can change it when picks open ${week.league === 'nfl' ? 'Tuesday' : 'Monday'} at 8:00 a.m. Eastern.`
+                : `Team picks and submission open ${week.league === 'nfl' ? 'Tuesday' : 'Monday'} at 8:00 a.m. Eastern.`}
             </div>
           ) : (
             <div className="locked-note">
@@ -219,7 +223,7 @@ export default function PickSheet({
             <br />
             Miss the pick? Earn <b>0.</b>
           </p>
-          <small>Each number can be used once. Highest weekend total takes the top spot.</small>
+          <small>Each number can be used once. Highest weekly total takes the top spot.</small>
         </div>
       </aside>
     </div>

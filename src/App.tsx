@@ -10,12 +10,13 @@ import SiteHeader from './components/SiteHeader'
 import WeekHero from './components/WeekHero'
 import WeekendNav from './components/WeekendNav'
 import { usePool } from './hooks/usePool'
-import type { PreviewStage } from './lib/demo'
+import type { DemoStage } from './lib/demo'
 import { isLeague } from './lib/leagues'
 import {
   entryOpensAt,
   hasEntryDeadlinePassed,
   isEntryOpen,
+  easternDate,
   seasonFor,
   updatePick,
   validatePicks,
@@ -34,7 +35,7 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
     return isLeague(selected) ? selected : 'nhl'
   })
   const [seasonScope, setSeasonScope] = useState<'league' | 'all'>('league')
-  const [stage, setStage] = useState<PreviewStage>('open')
+  const [stage, setStage] = useState<DemoStage>('open')
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [saveFeedback, setSaveFeedback] = useState<SaveFeedback | null>(null)
@@ -50,6 +51,8 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
     combinedStandings,
     entrants,
     publicPicks,
+    nflOffseason,
+    openLeagues,
     loading,
     error,
     setError,
@@ -90,12 +93,19 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
   const currentWeekend = weekendStartAt(pool.clock)
   const currentSeason = seasonFor(currentWeekend)
   let shownWeek: Weekend | null = view === 'season' ? null : week
-  if (!shownWeek && (view === 'season' || (view === 'admin' && session.isAdmin))) {
-    const startDate = view === 'season' ? currentWeekend : (selectedWeek ?? currentWeekend)
+  if (
+    !shownWeek &&
+    (view === 'season' ||
+      (view === 'admin' && session.isAdmin && (league !== 'nfl' || weeks.length)))
+  ) {
+    const startDate =
+      (view === 'season' ? null : selectedWeek) ??
+      (league === 'nfl' ? (weeks[0]?.start_date ?? easternDate(Date.now())) : currentWeekend)
     shownWeek = {
       league,
       startDate,
-      season: seasonFor(startDate),
+      season: league === 'nfl' && weeks[0] ? weeks[0].season : seasonFor(startDate),
+      weekNumber: null,
       opensAt: entryOpensAt(startDate),
       lockAt: null,
       status: 'open',
@@ -132,6 +142,7 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
     else url.searchParams.set('league', next)
     window.history.pushState(null, '', url)
     setSelectedWeek(null)
+    if (stage === 'offseason' || (stage === 'upcoming' && next === 'nfl')) setStage('open')
     setSeasonScope('league')
     setLeague(next)
     window.scrollTo({ top: 0, behavior: 'auto' })
@@ -190,12 +201,24 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
         <div className="demo-bar">
           <span>
             <b>LOCAL DESIGN PREVIEW</b> ·{' '}
-            {league === 'nhl' ? 'Sample NHL schedule' : 'PWHL coming-soon preview'} · Picks stay in
-            this browser
+            {league === 'nhl'
+              ? 'Sample NHL schedule'
+              : league === 'nfl'
+                ? 'Sample NFL week'
+                : 'PWHL coming-soon preview'}{' '}
+            · Picks stay in this browser
           </span>
           <div className="demo-stages">
             <span>View state</span>
-            {(['upcoming', 'open', 'locked', 'final'] as const).map((item) => (
+            {(
+              [
+                ...(league === 'nfl' ? [] : ['upcoming']),
+                'open',
+                'locked',
+                'final',
+                ...(league === 'nfl' ? ['offseason'] : []),
+              ] as DemoStage[]
+            ).map((item) => (
               <button
                 key={item}
                 className={stage === item ? 'active' : ''}
@@ -208,9 +231,13 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
         </div>
       )}
       <SiteHeader session={session} view={view} onNavigate={navigateView} />
-      <LeagueTabs league={league} onChange={changeLeague} />
+      <LeagueTabs league={league} onChange={changeLeague} openLeagues={openLeagues} />
       <main id="top" className="page-content">
-        <PicksIntro active={view === 'picks'} onAbout={() => navigateView('about')} />
+        <PicksIntro
+          active={view === 'picks'}
+          league={league}
+          onAbout={() => navigateView('about')}
+        />
         {view === 'about' ? (
           <About demo={demo} onPlay={() => navigateView('picks')} />
         ) : (
@@ -241,26 +268,55 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
               {!loading && (view === 'picks' || view === 'standings') && (
                 <WeekendNav
                   weeks={weeks}
-                  activeStart={selectedWeek ?? week?.startDate ?? currentWeekend}
-                  onChange={(start) => setSelectedWeek(start === currentWeekend ? null : start)}
+                  league={league}
+                  activeStart={
+                    selectedWeek ??
+                    week?.startDate ??
+                    (league === 'nfl' ? (weeks[0]?.start_date ?? currentWeekend) : currentWeekend)
+                  }
+                  onChange={(start) =>
+                    setSelectedWeek(league !== 'nfl' && start === currentWeekend ? null : start)
+                  }
                 />
               )}
               {loading ? (
-                <div className="loading-panel">Loading the weekend slate…</div>
+                <div className="loading-panel">Loading the league slate…</div>
               ) : !shownWeek ||
                 (!shownWeek.games.length && view !== 'admin' && view !== 'season') ? (
                 <div className="empty-state large">
                   <span className="empty-icon">◇</span>
                   <h2>
-                    {league === 'pwhl' && !weeks.length
-                      ? 'PWHL IS COMING THIS SEASON'
-                      : 'No regular-season games on this weekend'}
+                    {league === 'nfl'
+                      ? nflOffseason
+                        ? 'NFL IS IN THE OFFSEASON'
+                        : 'NFL PICKS OPEN NEXT TUESDAY'
+                      : league === 'pwhl' && !weeks.length
+                        ? 'PWHL IS COMING THIS SEASON'
+                        : 'No regular-season games on this weekend'}
                   </h2>
                   <p>
-                    {league === 'pwhl' && !weeks.length
-                      ? 'PWHL picks will open when the first regular-season weekend is scheduled.'
-                      : `Try another ${league.toUpperCase()} weekend when games are scheduled.`}
+                    {league === 'nfl'
+                      ? nflOffseason
+                        ? 'The next NFL regular-season pool will appear when its first week opens. Choose a past week to see results.'
+                        : 'The next NFL pick sheet opens Tuesday at 8 a.m. Eastern. Choose a past week to see results.'
+                      : league === 'pwhl' && !weeks.length
+                        ? 'PWHL picks will open when the first regular-season weekend is scheduled.'
+                        : `Try another ${league.toUpperCase()} weekend when games are scheduled.`}
                   </p>
+                  {league === 'nfl' && weeks.length > 0 && (
+                    <select
+                      aria-label="Choose NFL week"
+                      value={selectedWeek ?? ''}
+                      onChange={(event) => setSelectedWeek(event.target.value || null)}
+                    >
+                      <option value="">Choose a past week</option>
+                      {weeks.map((item) => (
+                        <option key={item.start_date} value={item.start_date}>
+                          {item.season.slice(0, 4)} · Week {item.week_number}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               ) : (
                 <>
@@ -276,7 +332,7 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
                           {displayStatus === 'open'
                             ? 'ENTRIES OPEN'
                             : displayStatus === 'upcoming'
-                              ? 'OPENS MON 8 AM ET'
+                              ? `OPENS ${league === 'nfl' ? 'TUE' : 'MON'} 8 AM ET`
                               : displayStatus === 'locked'
                                 ? 'PICKS LOCKED'
                                 : demo
@@ -345,9 +401,10 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
       <footer className="site-footer">
         <span>WEEKEND POOLS</span>
         <span>WEEKEND CONFIDENCE POOLS</span>
-        <span>NHL and PWHL schedules and scores · Eastern time</span>
+        <span>NHL, PWHL, and NFL schedules and scores · Eastern time</span>
         <span className="footer-disclaimer">
-          For fun only · No real money involved · Not affiliated with or endorsed by the NHL or PWHL
+          For fun only · No real money involved · Not affiliated with or endorsed by the NHL, PWHL,
+          or NFL
         </span>
         <span className="footer-disclaimer">
           PWHL statistics provided by the Professional Women’s Hockey League ·{' '}
@@ -355,6 +412,7 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
             Powered by HockeyTech.com
           </a>
         </span>
+        <span className="footer-disclaimer">NFL schedule and scores provided by ESPN.</span>
       </footer>
       {saveToastVisible && saveFeedback && (
         <SaveToast feedback={saveFeedback} onDismiss={() => setSaveToastVisible(false)} />

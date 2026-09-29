@@ -2,6 +2,7 @@ import type { CombinedStanding, Entry, PublicPick, Standing, Weekend, WeekListin
 
 export interface PoolData {
   week: Weekend | null
+  nflOffseason: boolean
   weeks: WeekListing[]
   entry: Entry | null
   standings: Standing[]
@@ -13,6 +14,7 @@ export interface PoolData {
 
 export const emptyPool: PoolData = {
   week: null,
+  nflOffseason: false,
   weeks: [],
   entry: null,
   standings: [],

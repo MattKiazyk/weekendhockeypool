@@ -1,5 +1,5 @@
 export type Side = 'away' | 'home'
-export type LeagueId = 'nhl' | 'pwhl'
+export type LeagueId = 'nhl' | 'pwhl' | 'nfl'
 export type GameState = 'scheduled' | 'live' | 'final' | 'void'
 export type WeekendStatus = 'open' | 'locked' | 'final'
 
@@ -26,6 +26,7 @@ export interface Weekend {
   league: LeagueId
   startDate: string
   season: string
+  weekNumber: number | null
   opensAt: string
   lockAt: string | null
   status: WeekendStatus
@@ -63,12 +64,14 @@ export interface WeekListing {
   league: LeagueId
   start_date: string
   season: string
+  week_number: number | null
   status: WeekendStatus
 }
 
 export interface CombinedStanding extends Standing {
   nhlPoints: number | null
   pwhlPoints: number | null
+  nflPoints: number | null
 }
 
 export function isWeekendComplete(week: Weekend): boolean {
@@ -113,6 +116,21 @@ export function addDays(date: string, days: number): string {
   return result.toISOString().slice(0, 10)
 }
 
+export function easternTimeAt(date: string, hour: number): string {
+  const noon = new Date(`${date}T12:00:00Z`)
+  const zone = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    timeZoneName: 'shortOffset',
+  })
+    .formatToParts(noon)
+    .find((part) => part.type === 'timeZoneName')?.value
+  const offset = /^GMT([+-]\d{1,2})$/.exec(zone ?? '')
+  if (!offset) throw new Error('Could not determine Eastern time offset')
+  const result = new Date(`${date}T00:00:00Z`)
+  result.setUTCHours(hour - Number(offset[1]))
+  return result.toISOString()
+}
+
 export function weekendStartAt(value: string | number | Date): string {
   const date = easternDate(value)
   const weekday = new Date(`${date}T12:00:00Z`).getUTCDay()
@@ -137,19 +155,13 @@ export function lockTime(games: Game[]): string | null {
 }
 
 export function entryOpensAt(startDate: string): string {
-  const monday = addDays(startDate, -4)
-  const noonUtc = new Date(`${monday}T12:00:00Z`)
-  const easternHour = Number(
-    new Intl.DateTimeFormat('en-US', {
-      timeZone: 'America/New_York',
-      hour: 'numeric',
-      hourCycle: 'h23',
-    }).format(noonUtc),
-  )
-  return new Date(noonUtc.getTime() + (8 - easternHour) * 60 * 60 * 1000).toISOString()
+  return easternTimeAt(addDays(startDate, -4), 8)
 }
 
-export function isEntryOpen(week: Weekend, now = Date.now()): boolean {
+export function isEntryOpen(
+  week: { status: WeekendStatus; opensAt: string; lockAt: string | null },
+  now = Date.now(),
+): boolean {
   return (
     week.status === 'open' &&
     Number.isFinite(Date.parse(week.opensAt)) &&
@@ -176,7 +188,7 @@ export function validatePicks(picks: Pick[], games: Game[]): string[] {
     new Set(picks.map((pick) => pick.gameId)).size !== picks.length ||
     picks.some((pick) => !gameIds.has(pick.gameId))
   ) {
-    errors.push('Each pick must match a different game in this weekend.')
+    errors.push('Each pick must match a different game in this week.')
   }
   if (picks.some((pick) => pick.side !== 'away' && pick.side !== 'home')) {
     errors.push('Choose exactly one side for each game.')

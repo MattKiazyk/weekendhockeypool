@@ -1,7 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { emptyPool, fetchJson, sendJson, type PoolData } from '../lib/api'
-import { getDemoData, readDemoEntry, saveDemoEntry, type PreviewStage } from '../lib/demo'
+import { getDemoData, readDemoEntry, saveDemoEntry, type DemoStage } from '../lib/demo'
 import {
+  addDays,
+  easternDate,
+  easternTimeAt,
   hasEntryDeadlinePassed,
   seasonFor,
   weekendStartAt,
@@ -20,7 +23,7 @@ export function usePool(
   session: PoolSession,
   league: LeagueId,
   demo: boolean,
-  stage: PreviewStage,
+  stage: DemoStage,
   showEntrants: boolean,
 ) {
   const { signedIn, userId, username, getToken } = session
@@ -33,6 +36,8 @@ export function usePool(
   const [error, setError] = useState('')
   const [clock, setClock] = useState(Date.now)
   const currentWeekend = weekendStartAt(clock)
+  const [liveOpenLeagues, setLiveOpenLeagues] = useState<LeagueId[]>([])
+  const seenNflRelease = useRef<string | null>(null)
 
   useEffect(() => {
     const timer = window.setInterval(() => setClock(Date.now()), 15000)
@@ -40,8 +45,47 @@ export function usePool(
   }, [])
 
   useEffect(() => {
+    if (demo) return
+    const controller = new AbortController()
+    async function refreshOpenLeagues() {
+      try {
+        const { openLeagues } = await fetchJson<{ openLeagues: LeagueId[] }>(
+          '/api/open-leagues',
+          null,
+          { signal: controller.signal },
+        )
+        if (!controller.signal.aborted) setLiveOpenLeagues(openLeagues)
+      } catch {
+        if (!controller.signal.aborted) setLiveOpenLeagues([])
+      }
+    }
+    void refreshOpenLeagues()
+    const timer = window.setInterval(() => void refreshOpenLeagues(), 30000)
+    return () => {
+      controller.abort()
+      window.clearInterval(timer)
+    }
+  }, [demo, league, loading, reloadKey])
+
+  useEffect(() => {
+    if (demo || league !== 'nfl' || selectedWeek) {
+      seenNflRelease.current = null
+      return
+    }
+    const today = easternDate(clock)
+    const weekday = new Date(`${today}T12:00:00Z`).getUTCDay()
+    const tuesday = addDays(today, 2 - weekday)
+    const currentRelease = easternTimeAt(tuesday, 8)
+    const marker =
+      clock >= Date.parse(currentRelease) ? currentRelease : easternTimeAt(addDays(tuesday, -7), 8)
+    if (seenNflRelease.current && seenNflRelease.current !== marker)
+      setReloadKey((value) => value + 1)
+    seenNflRelease.current = marker
+  }, [clock, demo, league, selectedWeek])
+
+  useEffect(() => {
     if (!demo) return
-    const entry = signedIn && league === 'nhl' ? readDemoEntry(selectedWeek ?? undefined) : null
+    const entry = signedIn && league !== 'pwhl' ? readDemoEntry(league, selectedWeek) : null
     setData({ ...emptyPool, entry })
     setDraft(entry?.picks ?? [])
   }, [demo, league, signedIn, selectedWeek])
@@ -59,18 +103,25 @@ export function usePool(
       setDraft([])
       try {
         const suffix = `?league=${league}${selectedWeek ? `&start=${selectedWeek}` : ''}`
-        const [{ week }, token] = await Promise.all([
-          fetchJson<{ week: Weekend | null }>(`/api/week${suffix}`, null, options),
+        const [{ week, nflOffseason }, token] = await Promise.all([
+          fetchJson<{ week: Weekend | null; nflOffseason: boolean }>(
+            `/api/week${suffix}`,
+            null,
+            options,
+          ),
           signedIn ? getToken() : Promise.resolve(null),
         ])
         if (controller.signal.aborted) return
         // Loading the current week can publish a new slate, so list it afterward.
-        const weeksRequest = fetchJson<{ weeks: WeekListing[] }>(
+        const { weeks } = await fetchJson<{ weeks: WeekListing[] }>(
           `/api/weeks?league=${league}`,
           null,
           options,
         )
-        const seasonId = seasonFor(currentWeekend)
+        const seasonId =
+          week?.season ??
+          (league === 'nfl' ? weeks[0]?.season : null) ??
+          seasonFor(selectedWeek ?? currentWeekend)
         const seasonRequest = fetchJson<{ standings: Standing[] }>(
           `/api/season?league=${league}&season=${seasonId}`,
           null,
@@ -82,53 +133,49 @@ export function usePool(
           options,
         )
         if (!week) {
-          const [{ weeks }, season, combined] = await Promise.all([
-            weeksRequest,
-            seasonRequest,
-            combinedRequest,
-          ])
+          const [season, combined] = await Promise.all([seasonRequest, combinedRequest])
           if (controller.signal.aborted) return
           setData({
             ...emptyPool,
+            nflOffseason,
             weeks,
             seasonStandings: season.standings,
             combinedStandings: combined.standings,
           })
           return
         }
-        const [{ weeks }, { standings }, season, combined, { entrants }, own, revealed] =
-          await Promise.all([
-            weeksRequest,
-            fetchJson<{ standings: Standing[] }>(
-              `/api/standings?league=${league}&start=${week.startDate}`,
-              null,
-              options,
-            ),
-            seasonRequest,
-            combinedRequest,
-            fetchJson<{ entrants: string[] }>(
-              `/api/entrants?league=${league}&start=${week.startDate}`,
-              null,
-              options,
-            ),
-            token
-              ? fetchJson<{ entry: Entry | null }>(
-                  `/api/entry?league=${league}&start=${week.startDate}`,
-                  token,
-                  options,
-                )
-              : { entry: null },
-            token && hasEntryDeadlinePassed(week)
-              ? fetchJson<{ picks: PublicPick[] }>(
-                  `/api/picks?league=${league}&start=${week.startDate}`,
-                  token,
-                  options,
-                )
-              : { picks: [] },
-          ])
+        const [{ standings }, season, combined, { entrants }, own, revealed] = await Promise.all([
+          fetchJson<{ standings: Standing[] }>(
+            `/api/standings?league=${league}&start=${week.startDate}`,
+            null,
+            options,
+          ),
+          seasonRequest,
+          combinedRequest,
+          fetchJson<{ entrants: string[] }>(
+            `/api/entrants?league=${league}&start=${week.startDate}`,
+            null,
+            options,
+          ),
+          token
+            ? fetchJson<{ entry: Entry | null }>(
+                `/api/entry?league=${league}&start=${week.startDate}`,
+                token,
+                options,
+              )
+            : { entry: null },
+          token && hasEntryDeadlinePassed(week)
+            ? fetchJson<{ picks: PublicPick[] }>(
+                `/api/picks?league=${league}&start=${week.startDate}`,
+                token,
+                options,
+              )
+            : { picks: [] },
+        ])
         if (controller.signal.aborted) return
         setData({
           week,
+          nflOffseason,
           weeks,
           standings,
           seasonStandings: season.standings,
@@ -194,7 +241,7 @@ export function usePool(
       updatedAt: timestamp,
     }
     if (demo) {
-      saveDemoEntry(saved, visibleData.week.startDate)
+      saveDemoEntry(saved, league, selectedWeek)
     } else {
       const result = await sendJson<{ updatedAt: string }>('/api/entry', await getToken(), 'PUT', {
         league,
@@ -227,6 +274,7 @@ export function usePool(
 
   return {
     ...visibleData,
+    openLeagues: demo ? (stage === 'open' ? (['nhl', 'nfl'] as LeagueId[]) : []) : liveOpenLeagues,
     draft,
     setDraft,
     selectedWeek,

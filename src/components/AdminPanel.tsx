@@ -105,7 +105,7 @@ export default function AdminPanel({ week, saving, onAction, onSelectWeek }: Adm
         </div>
         <div className="admin-form">
           <label>
-            Weekend Friday
+            {week.league === 'nfl' ? 'NFL week Thursday' : 'Weekend Friday'}
             <input
               type="date"
               value={week.startDate}

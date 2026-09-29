@@ -9,7 +9,7 @@ const steps = [
     title: 'Pick one winner',
     image: '/about-pick.svg',
     alt: 'Illustration of an away team selected over a home team',
-    text: 'Switch between NHL and PWHL and browse weekends by date. You can see matchups early, then choose a winner for every game once picks open Monday at 8 a.m. Eastern.',
+    text: 'Choose NHL, PWHL, or NFL. Hockey sheets cover Friday through Sunday; NFL sheets follow the official regular-season week. Pick a winner for every game.',
   },
   {
     number: '02',
@@ -23,7 +23,7 @@ const steps = [
     title: 'Watch the board',
     image: '/about-score.svg',
     alt: 'Illustration of a correct pick earning points on a leaderboard',
-    text: 'A correct pick earns its confidence number. A miss earns zero. Each league has its own standings, and the combined season table adds points from both.',
+    text: 'A correct pick earns its confidence number. A miss earns zero. Each league has its own standings, and the combined season table adds points from whichever leagues you enter.',
   },
 ]
 
@@ -41,15 +41,15 @@ function About({ demo, onPlay }: AboutProps) {
             MAKE YOUR <em>CALL.</em>
           </h1>
           <p>
-            Three days of games in each league. Enter NHL, PWHL, or both with one entry per league
-            each weekend. Give every pick a unique confidence number.
+            Join NHL, PWHL, NFL, or any mix. You can make one entry per league each week, and you’re
+            free to skip any league or week. It’s all just for fun.
           </p>
           <button type="button" className="about-cta" onClick={onPlay}>
-            See this weekend’s games <span aria-hidden="true">↗</span>
+            See this week’s games <span aria-hidden="true">↗</span>
           </button>
           <div className="about-hero-facts">
             <span>
-              <strong>FRI–SUN</strong>
+              <strong>WEEKLY</strong>
               <small>THE SLATE</small>
             </span>
             <span>
@@ -125,9 +125,9 @@ function About({ demo, onPlay }: AboutProps) {
               </span>
               <h3>When can I enter?</h3>
               <p>
-                Matchups are visible early. Team and confidence picks open Monday at 8:00 a.m.
-                Eastern before each weekend. Each league then locks at its first scheduled game,
-                whether that game is Friday, Saturday, or Sunday. You can save changes until then.
+                Hockey matchups are visible early, with picks opening Monday at 8 a.m. Eastern. NFL
+                weeks open Tuesday at 8 a.m. Eastern. Each league locks at its first scheduled game,
+                and you can save changes until then.
               </p>
             </article>
             <article>
@@ -147,8 +147,8 @@ function About({ demo, onPlay }: AboutProps) {
               </span>
               <h3>What if a game is postponed?</h3>
               <p>
-                A postponed or cancelled game is void for everyone. It earns no points and the
-                remaining picks keep their numbers.
+                A postponed or cancelled game is void for everyone. NFL ties and games moved to a
+                different NFL week are also void. The remaining picks keep their numbers.
               </p>
             </article>
             <article>
@@ -158,7 +158,7 @@ function About({ demo, onPlay }: AboutProps) {
               <h3>When are ranks final?</h3>
               <p>
                 After every game is final or void. Equal point totals share a rank, and points from
-                finalized weekends add to that league’s season standings and the combined total.
+                finalized weeks add to that league’s season standings and the combined total.
               </p>
             </article>
           </div>

@@ -11,18 +11,34 @@ import {
 import { leagues } from '../src/lib/leagues'
 import { getWeek, upsertGame } from './db'
 import { feedFor } from './feeds'
+import { nflWeekContext } from './nfl'
 import { nowIso } from './http'
 import { finalize } from './standings'
 import type { Env } from './types'
 
+export function syncSchedule(
+  db: D1Database,
+  league: 'nhl' | 'pwhl',
+  start: string,
+): Promise<Weekend>
+export function syncSchedule(db: D1Database, league: 'nfl', start: string): Promise<Weekend | null>
+export function syncSchedule(
+  db: D1Database,
+  league: LeagueId,
+  start: string,
+): Promise<Weekend | null>
 export async function syncSchedule(
   db: D1Database,
   league: LeagueId,
   start: string,
-): Promise<Weekend> {
+): Promise<Weekend | null> {
   const existing = await getWeek(db, league, start)
   if (existing && existing.status !== 'open') return existing
-  const { games: eligible, season } = await feedFor(league).schedule(start)
+  const { games: eligible, season, weekNumber, opensAt } = await feedFor(league).schedule(start)
+  if (league === 'nfl' && !existing) {
+    const firstKickoff = lockTime(eligible)
+    if (!firstKickoff || Date.now() >= Date.parse(firstKickoff)) return null
+  }
   const excluded = await db
     .prepare('SELECT source_game_id FROM excluded_games WHERE league=? AND weekend_start=?')
     .bind(league, start)
@@ -43,15 +59,17 @@ export async function syncSchedule(
   const retainedAdmin = (existing?.games ?? []).filter((game) => adminIds.has(game.sourceId))
   const weekStatement = db
     .prepare(
-      `INSERT INTO weekends (league, start_date, season, opens_at, lock_at, last_schedule_sync)
-       VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(league, start_date) DO UPDATE SET
+      `INSERT INTO weekends (league, start_date, season, week_number, opens_at, lock_at, last_schedule_sync)
+       VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(league, start_date) DO UPDATE SET
+       week_number=excluded.week_number, opens_at=excluded.opens_at,
        lock_at=excluded.lock_at, last_schedule_sync=excluded.last_schedule_sync`,
     )
     .bind(
       league,
       start,
       season,
-      entryOpensAt(start),
+      weekNumber ?? null,
+      opensAt ?? entryOpensAt(start),
       lockTime([...games.filter((game) => !adminIds.has(game.sourceId)), ...retainedAdmin]),
       nowIso(),
     )
@@ -104,7 +122,7 @@ export async function scheduled(env: Env): Promise<void> {
   const current = weekendStartAt(Date.now())
   const next = addDays(current, 7)
   const dailyRefresh = new Date().getUTCHours() === 12 && new Date().getUTCMinutes() < 15
-  for (const { id: league } of leagues) {
+  for (const { id: league } of leagues.filter((item) => item.id !== 'nfl')) {
     for (const start of [current, next]) {
       const week = await getWeek(env.DB, league, start)
       if (!week || (week.status === 'open' && dailyRefresh)) {
@@ -115,6 +133,19 @@ export async function scheduled(env: Env): Promise<void> {
         }
       }
     }
+  }
+  try {
+    const nfl = await nflWeekContext()
+    for (const selected of [nfl.active, nfl.next]) {
+      if (!selected) continue
+      const future = Date.parse(selected.opensAt) > Date.now()
+      if (future && Date.parse(selected.opensAt) - Date.now() > 7 * 24 * 60 * 60 * 1000) continue
+      const week = await getWeek(env.DB, 'nfl', selected.startDate)
+      if (!week || (week.status === 'open' && (!future || dailyRefresh)))
+        await syncSchedule(env.DB, 'nfl', selected.startDate)
+    }
+  } catch (cause) {
+    console.error('NFL schedule sync failed', cause)
   }
   const pending = await env.DB.prepare(
     "SELECT league, start_date FROM weekends WHERE status!='final' AND lock_at IS NOT NULL AND lock_at <= ? ORDER BY start_date DESC LIMIT 12",

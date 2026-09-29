@@ -36,7 +36,7 @@ export function CombinedStandingsList({ rows }: { rows: CombinedStanding[] }) {
       <div className="empty-state">
         <span className="empty-icon">▥</span>
         <h3>Nothing on the board yet</h3>
-        <p>Combined totals start when the first league weekend is final.</p>
+        <p>Combined totals start when the first league week is final.</p>
       </div>
     )
   return (
@@ -45,6 +45,7 @@ export function CombinedStandingsList({ rows }: { rows: CombinedStanding[] }) {
         <span>RANK / PLAYER</span>
         <span>NHL</span>
         <span>PWHL</span>
+        <span>NFL</span>
         <span>TOTAL</span>
       </div>
       {rows.map((row) => (
@@ -55,6 +56,7 @@ export function CombinedStandingsList({ rows }: { rows: CombinedStanding[] }) {
           </div>
           <span>{row.nhlPoints ?? '—'}</span>
           <span>{row.pwhlPoints ?? '—'}</span>
+          <span>{row.nflPoints ?? '—'}</span>
           <b>{row.points}</b>
         </div>
       ))}

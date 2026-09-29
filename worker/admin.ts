@@ -9,6 +9,7 @@ import {
 import { isLeague } from '../src/lib/leagues'
 import { getWeek, upsertGame, updateLockTime } from './db'
 import { syncSchedule } from './sync'
+import { getNflSchedule, nflWeekByStart } from './nfl'
 import { finalize } from './standings'
 import { error, json, validStart } from './http'
 import type { Env } from './types'
@@ -19,10 +20,12 @@ export async function admin(request: Request, env: Env, path: string): Promise<R
   const league = body.league ?? 'nhl'
   if (!isLeague(league)) return error('Invalid league', 400)
   const selected = body.startDate
-  if (typeof selected !== 'string' || !validStart(selected))
+  if (typeof selected !== 'string' || !validStart(selected, league))
     return error('Invalid weekend date', 400)
-  if (path === '/api/admin/sync')
-    return json({ week: await syncSchedule(env.DB, league, selected) })
+  if (path === '/api/admin/sync') {
+    const week = await syncSchedule(env.DB, league, selected)
+    return week ? json({ week }) : error('NFL week has already started', 409)
+  }
   if (path === '/api/admin/finalize') {
     await finalize(env.DB, league, selected)
     return json({ week: await getWeek(env.DB, league, selected) })
@@ -68,15 +71,20 @@ export async function admin(request: Request, env: Env, path: string): Promise<R
     const homeCode = String(body.homeCode ?? '').toUpperCase()
     const awayName = String(body.awayName ?? '').trim()
     const homeName = String(body.homeName ?? '').trim()
+    const nflWeek = league === 'nfl' ? await nflWeekByStart(selected) : null
+    const inNflWeek =
+      !!nflWeek &&
+      Date.parse(startUtc) >= Date.parse(nflWeek.feedStartsAt) &&
+      Date.parse(startUtc) <= Date.parse(nflWeek.feedEndsAt)
     if (
       !Number.isFinite(Date.parse(startUtc)) ||
-      !isInWeekend(easternDate(startUtc), selected) ||
+      (league === 'nfl' ? !inNflWeek : !isInWeekend(easternDate(startUtc), selected)) ||
       !/^[A-Z]{2,4}$/.test(awayCode) ||
       !/^[A-Z]{2,4}$/.test(homeCode) ||
       !awayName ||
       !homeName
     )
-      return error('Complete the matchup with a weekend start time', 400)
+      return error('Complete the matchup with a valid week start time', 400)
     const belongsTo = await env.DB.prepare(
       'SELECT weekend_start FROM games WHERE league=? AND source_game_id=?',
     )
@@ -86,10 +94,24 @@ export async function admin(request: Request, env: Env, path: string): Promise<R
       return error('That game ID belongs to another weekend', 409)
     const statements: D1PreparedStatement[] = []
     if (!week) {
+      if (league === 'nfl') {
+        const schedule = await getNflSchedule(selected)
+        if (
+          !schedule.games.length ||
+          Date.now() >= Date.parse(schedule.games.map((game) => game.startUtc).sort()[0])
+        )
+          return error('NFL week has already started', 409)
+      }
       statements.push(
         env.DB.prepare(
-          'INSERT INTO weekends (league, start_date, season, opens_at) VALUES (?, ?, ?, ?)',
-        ).bind(league, selected, seasonFor(selected), entryOpensAt(selected)),
+          'INSERT INTO weekends (league, start_date, season, week_number, opens_at) VALUES (?, ?, ?, ?, ?)',
+        ).bind(
+          league,
+          selected,
+          seasonFor(selected),
+          nflWeek?.number ?? null,
+          nflWeek?.opensAt ?? entryOpensAt(selected),
+        ),
       )
     }
     statements.push(

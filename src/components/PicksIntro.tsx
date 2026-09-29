@@ -1,8 +1,17 @@
 import { useState } from 'react'
+import type { LeagueId } from '../lib/pool'
 
 const dismissalKey = 'hockey-pool-intro-dismissed'
 
-export default function PicksIntro({ active, onAbout }: { active: boolean; onAbout: () => void }) {
+export default function PicksIntro({
+  active,
+  league,
+  onAbout,
+}: {
+  active: boolean
+  league: LeagueId
+  onAbout: () => void
+}) {
   const [dismissed, setDismissed] = useState(() => {
     try {
       return localStorage.getItem(dismissalKey) === 'true'
@@ -63,7 +72,7 @@ export default function PicksIntro({ active, onAbout }: { active: boolean; onAbo
               <h3>
                 <span>01</span> Pick a winner
               </h3>
-              <p>One team per game. Make a pick for every game on the weekend sheet.</p>
+              <p>One team per game. Make a pick for every game on your league’s sheet.</p>
             </div>
           </li>
           <li className="picks-intro-rank">
@@ -95,7 +104,8 @@ export default function PicksIntro({ active, onAbout }: { active: boolean; onAbo
         </ol>
         <div className="picks-intro-footer">
           <p>
-            <span aria-hidden="true">◷</span> <strong>Picks open Monday at 8 a.m. Eastern.</strong>{' '}
+            <span aria-hidden="true">◷</span>{' '}
+            <strong>Picks open {league === 'nfl' ? 'Tuesday' : 'Monday'} at 8 a.m. Eastern.</strong>{' '}
             Sign in and save before the first game.
           </p>
           <button type="button" className="picks-intro-rules" onClick={onAbout}>

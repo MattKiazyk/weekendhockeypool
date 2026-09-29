@@ -44,7 +44,7 @@ export function WeekendResults({
           </span>
           <h3>
             {displayStatus === 'final'
-              ? 'THE FINAL HORN.'
+              ? 'THE FINAL SCORE.'
               : picksUnlocked
                 ? 'THE PICKS ARE IN.'
                 : 'WHO’S ON THE BOARD?'}
@@ -58,7 +58,7 @@ export function WeekendResults({
           </p>
         </div>
         {displayStatus === 'final' && (
-          <StandingsList rows={standings} emptyText="No completed entries for this weekend." />
+          <StandingsList rows={standings} emptyText="No completed entries for this week." />
         )}
         <EntrantsBoard
           usernames={entrants}
@@ -69,7 +69,7 @@ export function WeekendResults({
         />
       </div>
       <aside className="results-aside">
-        <span className="card-kicker">WEEKEND SNAPSHOT</span>
+        <span className="card-kicker">WEEK SNAPSHOT</span>
         <strong>
           {games.filter((game) => game.state === 'final').length}
           <small>/{games.length}</small>
@@ -80,7 +80,7 @@ export function WeekendResults({
           <b>{entrants.length}</b> {entrants.length === 1 ? 'player has' : 'players have'} submitted
           an entry.
         </p>
-        <p>All times and weekend dates are shown in Eastern time.</p>
+        <p>All game times and dates are shown in Eastern time.</p>
       </aside>
     </div>
   )
@@ -107,10 +107,9 @@ export function SeasonResults({
       <div className="results-main">
         <div className="results-intro">
           <span className="card-kicker">{demo ? 'SAMPLE' : season} REGULAR SEASON</span>
-          <h3>EVERY WEEKEND COUNTS.</h3>
+          <h3>EVERY WEEK COUNTS.</h3>
           <p>
-            Points from finalized regular-season weekends add up here. Players can enter either
-            league or both.
+            Points from finalized regular-season pools add up here. Enter one league or all three.
           </p>
           <div className="season-scope" aria-label="Season standings scope">
             <button
@@ -132,7 +131,7 @@ export function SeasonResults({
         ) : (
           <StandingsList
             rows={standings}
-            emptyText="The season table starts after the first completed weekend."
+            emptyText="The season table starts after the first completed week."
           />
         )}
       </div>

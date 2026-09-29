@@ -6,12 +6,13 @@ export const leagues: { id: LeagueId; label: string; name: string; icon: string 
     id: 'pwhl',
     label: 'PWHL',
     name: 'Professional Women’s Hockey League',
-    icon: '/leagues/pwhl.svg',
+    icon: '/leagues/pwhl-white.svg',
   },
+  { id: 'nfl', label: 'NFL', name: 'National Football League', icon: '/leagues/nfl.png' },
 ]
 
 export function isLeague(value: unknown): value is LeagueId {
-  return value === 'nhl' || value === 'pwhl'
+  return value === 'nhl' || value === 'pwhl' || value === 'nfl'
 }
 
 export function leagueLabel(league: LeagueId): string {

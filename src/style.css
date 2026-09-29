@@ -1209,12 +1209,13 @@ a {
     order: 3;
     width: 100%;
     height: 42px;
-    gap: 24px;
+    gap: 18px;
     overflow: auto;
   }
   .main-nav button {
     font-size: 10px;
     padding: 0 1px;
+    white-space: nowrap;
   }
   .account-area {
     margin-left: auto;
@@ -2854,14 +2855,44 @@ a {
   height: 34px;
   padding: 2px;
   border-radius: 3px;
-  background: #fff;
+  background: transparent;
   object-fit: contain;
+}
+.league-tabs button[data-league='nfl'] img {
+  padding: 0;
+}
+.league-tabs button[data-league='pwhl'].active img {
+  filter: drop-shadow(0 1px 1px #6b5116);
+}
+.league-tab-label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+.league-tab-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #60d9b1;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+.league-tab-status i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
 }
 .league-tabs button.active,
 .season-scope button.active {
   border-color: #f2c44e;
   background: #f2c44e;
   color: #101b2c;
+}
+.league-tabs button.active .league-tab-status {
+  color: #135b47;
 }
 .league-tabs button:focus-visible,
 .season-scope button:focus-visible {
@@ -2876,7 +2907,7 @@ a {
 }
 .combined-standing-list .standing-head,
 .combined-standing-list .standing-row {
-  grid-template-columns: minmax(0, 1fr) 70px 70px 70px;
+  grid-template-columns: minmax(0, 1fr) 70px 70px 70px 70px;
 }
 .combined-standing-list .standing-row > div {
   min-width: 0;
@@ -2895,10 +2926,23 @@ a {
   }
   .league-tabs button {
     flex: 1;
+    min-width: 0;
+    gap: 6px;
+    padding: 6px;
+  }
+  .league-tabs img {
+    width: 30px;
+    height: 30px;
+    flex: 0 0 30px;
+  }
+  .league-tab-status {
+    gap: 3px;
+    font-size: 7px;
+    letter-spacing: 0.03em;
   }
   .combined-standing-list .standing-head,
   .combined-standing-list .standing-row {
-    grid-template-columns: minmax(0, 1fr) 43px 43px 52px;
+    grid-template-columns: minmax(0, 1fr) 37px 37px 37px 48px;
     padding-left: 12px;
     padding-right: 12px;
     gap: 4px;

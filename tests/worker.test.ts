@@ -77,6 +77,38 @@ function mockSchedule(items: NhlGame[]) {
 }
 
 describe('entry persistence and visibility', () => {
+  it('shows an open tab status only for released slates that still accept entries', async () => {
+    vi.mocked(auth).mockResolvedValue(null)
+    await database.db
+      .prepare('INSERT INTO weekends (league, start_date, season, opens_at) VALUES (?, ?, ?, ?)')
+      .bind('pwhl', start, '2099-00', alreadyOpen)
+      .run()
+    await database.db.batch([
+      upsertGame(database.db, 'pwhl', start, games[0], 'feed'),
+      updateLockTime(database.db, 'pwhl', start),
+    ])
+    await database.db
+      .prepare(
+        'INSERT INTO weekends (league, start_date, season, week_number, opens_at) VALUES (?, ?, ?, ?, ?)',
+      )
+      .bind('nfl', '2099-10-01', '2099-00', 4, '2099-09-29T12:00:00Z')
+      .run()
+    await database.db.batch([
+      upsertGame(database.db, 'nfl', '2099-10-01', games[0], 'feed'),
+      updateLockTime(database.db, 'nfl', '2099-10-01'),
+    ])
+    expect(await (await request('open-leagues')).json()).toEqual({
+      openLeagues: ['nhl', 'pwhl'],
+    })
+    database.sqlite.exec("UPDATE weekends SET opens_at='2000-01-01T00:00:00Z' WHERE league='nfl'")
+    expect(await (await request('open-leagues')).json()).toEqual({
+      openLeagues: ['nhl', 'pwhl', 'nfl'],
+    })
+    database.sqlite.exec("UPDATE weekends SET status='locked' WHERE league='pwhl'")
+    database.sqlite.exec("UPDATE weekends SET lock_at='2000-01-01T00:00:00Z' WHERE league='nhl'")
+    expect(await (await request('open-leagues')).json()).toEqual({ openLeagues: ['nfl'] })
+  })
+
   it('saves and replaces a complete entry without changing its submission time', async () => {
     expect((await request('entry', 'PUT', { startDate: start, picks })).status).toBe(200)
     const first = await getEntry(database.db, 'nhl', start, user.userId)
@@ -351,8 +383,18 @@ describe('multiple leagues', () => {
     expect((await request('entry', 'PUT', { startDate: start, picks })).status).toBe(200)
   })
 
-  it('combines finalized points from either league without mixing league standings', async () => {
+  it('combines finalized points from all three leagues without mixing standings', async () => {
     const pwhlWeek = await addPwhlWeek()
+    const nflStart = addDays(start, -1)
+    await database.db
+      .prepare(
+        'INSERT INTO weekends (league, start_date, season, week_number, opens_at) VALUES (?, ?, ?, ?, ?)',
+      )
+      .bind('nfl', nflStart, '2099-00', 4, alreadyOpen)
+      .run()
+    await upsertGame(database.db, 'nfl', nflStart, games[0], 'feed').run()
+    await updateLockTime(database.db, 'nfl', nflStart).run()
+    const nflWeek = (await getWeek(database.db, 'nfl', nflStart))!
     await saveEntry(database.db, 'nhl', start, user.userId, picks)
     await saveEntry(
       database.db,
@@ -367,30 +409,63 @@ describe('multiple leagues', () => {
     )
     await savePlayer(database.db, { userId: 'player-2', username: 'nhl_only' })
     await saveEntry(database.db, 'nhl', start, 'player-2', picks)
+    await savePlayer(database.db, { userId: 'player-3', username: 'nfl_only' })
+    for (const id of [user.userId, 'player-3']) {
+      await saveEntry(database.db, 'nfl', nflStart, id, [
+        { gameId: nflWeek.games[0].id, side: 'home', confidence: 1 },
+      ])
+    }
     closeEntries()
     database.sqlite.exec(
       "UPDATE games SET state='final', winner='home', away_score=1, home_score=2",
     )
     await finalize(database.db, 'nhl', start)
     const before = (await (await request('season?league=all&season=2099-00')).json()) as {
-      standings: { username: string; nhlPoints: number | null; pwhlPoints: number | null }[]
+      standings: {
+        username: string
+        nhlPoints: number | null
+        pwhlPoints: number | null
+        nflPoints: number | null
+      }[]
     }
     expect(before.standings.find((row) => row.username === 'rinkside')).toMatchObject({
       nhlPoints: 1,
       pwhlPoints: null,
+      nflPoints: null,
     })
     await finalize(database.db, 'pwhl', start)
+    await finalize(database.db, 'nfl', nflStart)
     const combined = (await (await request('season?league=all&season=2099-00')).json()) as {
       standings: {
         username: string
         points: number
         nhlPoints: number | null
         pwhlPoints: number | null
+        nflPoints: number | null
       }[]
     }
     expect(combined.standings).toEqual([
-      expect.objectContaining({ username: 'rinkside', points: 4, nhlPoints: 1, pwhlPoints: 3 }),
-      expect.objectContaining({ username: 'nhl_only', points: 1, nhlPoints: 1, pwhlPoints: null }),
+      expect.objectContaining({
+        username: 'rinkside',
+        points: 5,
+        nhlPoints: 1,
+        pwhlPoints: 3,
+        nflPoints: 1,
+      }),
+      expect.objectContaining({
+        username: 'nfl_only',
+        points: 1,
+        nhlPoints: null,
+        pwhlPoints: null,
+        nflPoints: 1,
+      }),
+      expect.objectContaining({
+        username: 'nhl_only',
+        points: 1,
+        nhlPoints: 1,
+        pwhlPoints: null,
+        nflPoints: null,
+      }),
     ])
     expect(await (await request('season?league=pwhl&season=2099-00')).json()).toEqual({
       standings: [{ username: 'rinkside', points: 3, correct: 2, rank: 1 }],

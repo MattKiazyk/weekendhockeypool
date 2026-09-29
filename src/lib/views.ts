@@ -1,10 +1,10 @@
 export const views = [
-  { id: 'picks', label: 'Picks', kicker: '01 / MAKE YOUR CALL', title: 'THE PICK SHEET' },
+  { id: 'picks', label: 'My Picks', kicker: '01 / MAKE YOUR CALL', title: 'THE PICK SHEET' },
   {
     id: 'standings',
     label: 'Standings',
     kicker: '02 / THE LEADERBOARD',
-    title: 'WEEKEND STANDINGS',
+    title: 'WEEK STANDINGS',
   },
   { id: 'season', label: 'Season', kicker: '03 / THE LONG GAME', title: 'SEASON STANDINGS' },
   { id: 'about', label: 'About', kicker: '', title: '' },

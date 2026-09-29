@@ -23,6 +23,7 @@ interface WeekRow {
   league: LeagueId
   start_date: string
   season: string
+  week_number: number | null
   opens_at: string
   lock_at: string | null
   status: Weekend['status']
@@ -68,6 +69,7 @@ export async function getWeek(
     league,
     startDate: start,
     season: week.season,
+    weekNumber: week.week_number,
     opensAt: week.opens_at,
     lockAt: week.lock_at,
     status,

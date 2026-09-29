@@ -101,3 +101,30 @@ it('backfills Eastern opening times without removing early entries', () => {
     sqlite.close()
   }
 })
+
+it('adds NFL week numbers after the hockey opening migration', () => {
+  const sqlite = new DatabaseSync(':memory:')
+  try {
+    for (const name of readdirSync('migrations')
+      .filter((name) => name.endsWith('.sql') && name < '0009_nfl.sql')
+      .sort()) {
+      sqlite.exec(readFileSync(`migrations/${name}`, 'utf8'))
+    }
+    sqlite.exec(
+      "INSERT INTO weekends (league, start_date, season, opens_at) VALUES ('nhl', '2026-10-02', '2026-27', '2026-09-28T12:00:00Z')",
+    )
+    sqlite.exec(readFileSync('migrations/0009_nfl.sql', 'utf8'))
+    expect(sqlite.prepare("SELECT id FROM leagues WHERE id='nfl'").get()).toEqual({ id: 'nfl' })
+    expect(sqlite.prepare("SELECT opens_at FROM weekends WHERE league='nhl'").get()).toEqual({
+      opens_at: '2026-09-28T12:00:00Z',
+    })
+    sqlite.exec(
+      "INSERT INTO weekends (league, start_date, season, week_number, opens_at) VALUES ('nfl', '2026-10-01', '2026-27', 4, '2026-09-29T12:00:00Z')",
+    )
+    expect(sqlite.prepare("SELECT week_number FROM weekends WHERE league='nfl'").get()).toEqual({
+      week_number: 4,
+    })
+  } finally {
+    sqlite.close()
+  }
+})
