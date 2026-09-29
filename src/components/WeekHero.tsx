@@ -13,12 +13,14 @@ export default function WeekHero({
   status,
   season,
   seasonOnly = false,
+  offseason = false,
 }: {
   week: Weekend | null
   league: LeagueId
   status: WeekendStatus | 'upcoming'
   season?: string
   seasonOnly?: boolean
+  offseason?: boolean
 }) {
   const count = week?.games.length ?? 0
   const nfl = league === 'nfl'
@@ -32,7 +34,9 @@ export default function WeekHero({
         ? formatSlateDates(gameDates[0], gameDates[gameDates.length - 1])
         : formatSlateDates(week.startDate)
       : nfl
-        ? 'NFL OFFSEASON'
+        ? offseason
+          ? 'NFL OFFSEASON'
+          : 'NEXT NFL WEEK'
         : 'NEXT WEEKEND'
   return (
     <section className="hero slate-hero">
@@ -58,13 +62,13 @@ export default function WeekHero({
             </span>
             <h1>{title}</h1>
           </div>
-          {!seasonOnly && (
+          {!seasonOnly && (!nfl || week) && (
             <div className="slate-stat">
               <strong>{count}</strong>
               <span>GAMES</span>
             </div>
           )}
-          {!seasonOnly && (
+          {!seasonOnly && (!nfl || week) && (
             <div className="slate-stat slate-deadline">
               <strong>
                 {status === 'final'
@@ -88,7 +92,7 @@ export default function WeekHero({
           )}
         </div>
       </div>
-      {!seasonOnly && (
+      {!seasonOnly && (!nfl || week) && (
         <div className="hero-number" aria-hidden="true">
           {String(count).padStart(2, '0')}
         </div>

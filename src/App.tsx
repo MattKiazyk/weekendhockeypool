@@ -253,6 +253,7 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
               status={displayStatus}
               season={view === 'season' ? currentSeason : undefined}
               seasonOnly={view === 'season'}
+              offseason={nflOffseason}
             />
             <div className="content-wrap">
               {error && (
@@ -289,7 +290,7 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
                     {league === 'nfl'
                       ? nflOffseason
                         ? 'NFL IS IN THE OFFSEASON'
-                        : 'NFL PICKS OPEN NEXT TUESDAY'
+                        : 'NFL PICKS OPEN TUESDAY'
                       : league === 'pwhl' && !weeks.length
                         ? 'PWHL IS COMING THIS SEASON'
                         : 'No regular-season games on this weekend'}
@@ -297,8 +298,8 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
                   <p>
                     {league === 'nfl'
                       ? nflOffseason
-                        ? 'The next NFL regular-season pool will appear when its first week opens. Choose a past week to see results.'
-                        : 'The next NFL pick sheet opens Tuesday at 8 a.m. Eastern. Choose a past week to see results.'
+                        ? `The next NFL regular-season pool will appear when its first week opens.${weeks.length ? ' Choose a past week to see results.' : ''}`
+                        : `The next NFL pick sheet opens Tuesday at 8 a.m. Eastern.${weeks.length ? ' Choose a past week to see results.' : ''}`
                       : league === 'pwhl' && !weeks.length
                         ? 'PWHL picks will open when the first regular-season weekend is scheduled.'
                         : `Try another ${league.toUpperCase()} weekend when games are scheduled.`}
