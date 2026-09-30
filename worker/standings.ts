@@ -1,3 +1,4 @@
+import { recapStatements } from './email/store'
 import {
   hasEntryDeadlinePassed,
   isWeekendComplete,
@@ -45,10 +46,28 @@ export async function finalize(db: D1Database, league: LeagueId, start: string):
         .bind(league, start, row.clerkId, row.points, row.correct, row.rank),
     )
   }
+  const finalizedAt = nowIso()
+  const players = await db
+    .prepare(
+      'SELECT p.clerk_id, p.username FROM players p JOIN entries e ON e.clerk_id=p.clerk_id WHERE e.league=? AND e.weekend_start=?',
+    )
+    .bind(league, start)
+    .all<{ clerk_id: string; username: string }>()
+  const usernames = new Map(players.results.map((player) => [player.clerk_id, player.username]))
+  statements.push(
+    ...recapStatements(
+      db,
+      week,
+      ranked
+        .map((row) => ({ ...row, username: usernames.get(row.clerkId) ?? 'Player' }))
+        .sort((a, b) => a.rank - b.rank || a.username.localeCompare(b.username)),
+      finalizedAt,
+    ),
+  )
   statements.push(
     db
       .prepare("UPDATE weekends SET status='final', finalized_at=? WHERE league=? AND start_date=?")
-      .bind(nowIso(), league, start),
+      .bind(finalizedAt, league, start),
   )
   await db.batch(statements)
 }

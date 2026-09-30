@@ -1,3 +1,9 @@
 CLERK_PUBLISHABLE_KEY=pk_test_from_existing_weekend_pools_application
 CLERK_SECRET_KEY=sk_test_from_existing_weekend_pools_application
 ADMIN_CLERK_USER_ID=user_your_clerk_id
+
+# Optional local Clerk webhook verification; never use a production secret here.
+CLERK_WEBHOOK_SIGNING_SECRET=whsec_your_development_endpoint_secret
+# Disabled by default. Local EMAIL binding is simulated; do not use remote=true.
+EMAIL_ENABLED=false
+EMAIL_LAUNCH_AT=

@@ -1,3 +1,4 @@
+import { processEmails } from './email/delivery'
 import { api } from './api'
 import { error } from './http'
 import { scheduled } from './sync'
@@ -17,6 +18,19 @@ export default {
     env: Env,
     ctx: ExecutionContext,
   ): Promise<void> {
-    ctx.waitUntil(scheduled(env))
+    ctx.waitUntil(
+      (async () => {
+        try {
+          await scheduled(env)
+        } catch (cause) {
+          console.error('Scheduled sync failed', cause)
+        }
+        try {
+          await processEmails(env)
+        } catch (cause) {
+          console.error('Email processing failed', cause)
+        }
+      })(),
+    )
   },
 } satisfies ExportedHandler<Env>

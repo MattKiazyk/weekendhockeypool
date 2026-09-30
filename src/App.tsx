@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import About from './About'
+import EmailSettingsPage from './components/EmailSettings'
 import AdminPanel from './components/AdminPanel'
 import LeagueTabs from './components/LeagueTabs'
 import PickSheet from './components/PickSheet'
@@ -26,7 +27,7 @@ import {
   type Weekend,
 } from './lib/pool'
 import type { PoolSession } from './lib/session'
-import { viewFromHash, views, type View } from './lib/views'
+import { selectedStartFromUrl, viewFromHash, views, type View } from './lib/views'
 
 export default function App({ session, demo }: { session: PoolSession; demo: boolean }) {
   const [view, setView] = useState<View>(viewFromHash)
@@ -67,8 +68,8 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
       const nextLeague = isLeague(selected) ? selected : 'nhl'
       if (nextLeague !== league) {
         setLeague(nextLeague)
-        setSelectedWeek(null)
       }
+      setSelectedWeek(selectedStartFromUrl())
     }
     window.addEventListener('hashchange', onHashChange)
     window.addEventListener('popstate', onPopState)
@@ -135,9 +136,18 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
     window.scrollTo({ top: 0, behavior: 'auto' })
   }
 
+  function changeWeek(start: string | null) {
+    const url = new URL(window.location.href)
+    if (start) url.searchParams.set('start', start)
+    else url.searchParams.delete('start')
+    window.history.replaceState(null, '', url)
+    setSelectedWeek(start)
+  }
+
   function changeLeague(next: LeagueId) {
     if (next === league) return
     const url = new URL(window.location.href)
+    url.searchParams.delete('start')
     if (next === 'nhl') url.searchParams.delete('league')
     else url.searchParams.set('league', next)
     window.history.pushState(null, '', url)
@@ -238,7 +248,9 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
           league={league}
           onAbout={() => navigateView('about')}
         />
-        {view === 'about' ? (
+        {view === 'email-settings' ? (
+          <EmailSettingsPage key={session.userId ?? 'guest'} session={session} demo={demo} />
+        ) : view === 'about' ? (
           <About demo={demo} onPlay={() => navigateView('picks')} />
         ) : (
           <>
@@ -276,7 +288,7 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
                     (league === 'nfl' ? (weeks[0]?.start_date ?? currentWeekend) : currentWeekend)
                   }
                   onChange={(start) =>
-                    setSelectedWeek(league !== 'nfl' && start === currentWeekend ? null : start)
+                    changeWeek(league !== 'nfl' && start === currentWeekend ? null : start)
                   }
                 />
               )}
@@ -308,7 +320,7 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
                     <select
                       aria-label="Choose NFL week"
                       value={selectedWeek ?? ''}
-                      onChange={(event) => setSelectedWeek(event.target.value || null)}
+                      onChange={(event) => changeWeek(event.target.value || null)}
                     >
                       <option value="">Choose a past week</option>
                       {weeks.map((item) => (
@@ -390,7 +402,7 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
                       week={shownWeek}
                       saving={saving}
                       onAction={adminAction}
-                      onSelectWeek={setSelectedWeek}
+                      onSelectWeek={changeWeek}
                     />
                   )}
                 </>

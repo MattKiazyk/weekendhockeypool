@@ -35,7 +35,11 @@ export default function SiteHeader({
         </a>
         <nav className="main-nav" aria-label="Main navigation">
           {views
-            .filter((item) => item.id !== 'admin' || session.isAdmin)
+            .filter(
+              (item) =>
+                (item.id !== 'admin' || session.isAdmin) &&
+                (item.id !== 'email-settings' || session.signedIn),
+            )
             .map((item) => (
               <button
                 key={item.id}

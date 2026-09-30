@@ -1,3 +1,4 @@
+import { emptyEmailPreferences, isEmailPreferences } from './email'
 import schedule from '../demo-schedule.json'
 import nflSchedule from '../demo-nfl-schedule.json'
 import { emptyPool, type PoolData } from './api'
@@ -196,5 +197,28 @@ export function getDemoData(
         : [],
     seasonStandings,
     combinedStandings,
+  }
+}
+
+const emailStorageKey = 'hockey-pool-demo-email-settings-v1'
+export function readDemoEmailSettings(): import('./email').EmailSettings {
+  const settings: import('./email').EmailSettings = {
+    email: 'rinkside@example.com',
+    verified: true,
+    preferences: emptyEmailPreferences(),
+  }
+  try {
+    const saved: unknown = JSON.parse(localStorage.getItem(emailStorageKey) ?? 'null')
+    if (isEmailPreferences(saved)) settings.preferences = saved
+  } catch {
+    /* Preview also works when storage is unavailable. */
+  }
+  return settings
+}
+export function saveDemoEmailSettings(preferences: import('./email').EmailPreferences): void {
+  try {
+    localStorage.setItem(emailStorageKey, JSON.stringify(preferences))
+  } catch {
+    /* Session state is still saved. */
   }
 }

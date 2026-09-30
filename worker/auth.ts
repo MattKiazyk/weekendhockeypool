@@ -1,4 +1,5 @@
 import { createClerkClient } from '@clerk/backend'
+import { accountFromClerk } from './email/store'
 import type { Env, Player } from './types'
 
 export async function auth(request: Request, env: Env): Promise<Player | null> {
@@ -15,5 +16,5 @@ export async function auth(request: Request, env: Env): Promise<Player | null> {
   const userId = state.toAuth()?.userId
   if (!state.isAuthenticated || !userId) return null
   const user = await client.users.getUser(userId)
-  return { userId, username: user.username }
+  return { userId, username: user.username, emailAccount: accountFromClerk(user) }
 }

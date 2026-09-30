@@ -1,6 +1,15 @@
+import { emptyEmailPreferences, type EmailSettings, type EmailPreferences } from '../lib/email'
+import { selectedStartFromUrl } from '../lib/views'
 import { useEffect, useRef, useState } from 'react'
 import { emptyPool, fetchJson, sendJson, type PoolData } from '../lib/api'
-import { getDemoData, readDemoEntry, saveDemoEntry, type DemoStage } from '../lib/demo'
+import {
+  getDemoData,
+  readDemoEntry,
+  saveDemoEntry,
+  readDemoEmailSettings,
+  saveDemoEmailSettings,
+  type DemoStage,
+} from '../lib/demo'
 import {
   addDays,
   easternDate,
@@ -30,7 +39,7 @@ export function usePool(
   const [data, setData] = useState<PoolData>(emptyPool)
   const [dataLeague, setDataLeague] = useState<LeagueId>(league)
   const [draft, setDraft] = useState<Pick[]>([])
-  const [selectedWeek, setSelectedWeek] = useState<string | null>(null)
+  const [selectedWeek, setSelectedWeek] = useState<string | null>(selectedStartFromUrl)
   const [reloadKey, setReloadKey] = useState(0)
   const [loading, setLoading] = useState(!demo)
   const [error, setError] = useState('')
@@ -285,5 +294,76 @@ export function usePool(
     clock,
     saveEntry,
     adminAction,
+  }
+}
+
+export function useEmailSettings(session: PoolSession, demo: boolean) {
+  const { getToken, signedIn, userId } = session
+  const [settings, setSettings] = useState<EmailSettings>(() =>
+    demo
+      ? readDemoEmailSettings()
+      : { email: null, verified: false, preferences: emptyEmailPreferences() },
+  )
+  const [loading, setLoading] = useState(!demo)
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
+  const [reload, setReload] = useState(0)
+  useEffect(() => {
+    if (demo || !signedIn) return
+    let cancelled = false
+    setLoading(true)
+    setError('')
+    void getToken()
+      .then((token) => fetchJson<EmailSettings>('/api/email-settings', token))
+      .then((result) => {
+        if (!cancelled) setSettings(result)
+      })
+      .catch((cause: unknown) => {
+        if (!cancelled)
+          setError(cause instanceof Error ? cause.message : 'Could not load email settings')
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [demo, getToken, signedIn, userId, reload])
+  async function save(preferences: EmailPreferences) {
+    setSaving(true)
+    setMessage('')
+    setError('')
+    try {
+      if (demo) {
+        saveDemoEmailSettings(preferences)
+        setSettings((current) => ({ ...current, preferences }))
+      } else {
+        setSettings(
+          await sendJson<EmailSettings>(
+            '/api/email-settings',
+            await getToken(),
+            'PUT',
+            preferences,
+          ),
+        )
+      }
+      setMessage(
+        demo ? 'Preview email settings saved. No emails will be sent.' : 'Email settings saved.',
+      )
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not save email settings')
+    } finally {
+      setSaving(false)
+    }
+  }
+  return {
+    settings,
+    loading,
+    saving,
+    message,
+    error,
+    save,
+    retry: () => setReload((value) => value + 1),
   }
 }

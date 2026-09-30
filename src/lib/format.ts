@@ -19,3 +19,6 @@ export const formatSlateDates = (start: string, end = addDays(start, 2)) => {
     ? `${startMonth} ${startDay}–${endDay}`
     : `${startMonth} ${startDay} – ${endMonth} ${endDay}`
 }
+
+export const formatDeadline = (iso: string) =>
+  `${dateLabel(iso, { dateStyle: 'full', timeStyle: 'short' })} Eastern`

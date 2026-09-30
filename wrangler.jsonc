@@ -18,5 +18,7 @@
       "migrations_dir": "migrations",
     },
   ],
+  "send_email": [{ "name": "EMAIL", "allowed_sender_addresses": ["noreply@weeklypools.ca"] }],
+  "vars": { "EMAIL_ENABLED": "false", "EMAIL_LAUNCH_AT": "" },
   "triggers": { "crons": ["*/15 * * * *"] },
 }

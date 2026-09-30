@@ -11,6 +11,7 @@ Weekly Pools is a React/Vite frontend with a Cloudflare Worker, D1, and Clerk. T
 - Keep supported league IDs and display metadata in `src/lib/leagues.ts`. Each new league needs a Worker feed adapter registered in `worker/feeds.ts`. NFL feed normalization and official-week discovery belong in `worker/nfl.ts`.
 - Keep league-tab availability loading in `src/hooks/usePool.ts`, the released/open-week check in `worker/api.ts`, and its compact indicator in `src/components/LeagueTabs.tsx`. The indicator must use entry opening and deadline rules, not a status label alone.
 - Keep official team-record feed parsing in each league's Worker adapter, daily snapshot scheduling in `worker/sync.ts`, and Picks display in `src/components/Matchup.tsx`. Snapshots belong to a league and pick week and freeze at its entry deadline.
+- Keep email settings loading/saving in `src/hooks/usePool.ts`, settings UI in `src/components/EmailSettings.tsx`, and shared preference types in `src/lib/email.ts`. Keep private email account/preference persistence and atomic recap snapshots in `worker/email/store.ts`, Clerk webhook verification in `webhook.ts`, HTML/plain-text templates in `templates.ts`, and scheduling/delivery in `delivery.ts`. Email addresses must never enter public pool responses.
 - Keep demo fixtures/storage in `src/lib/demo.ts` and render preview and live data through the same components. Preview is development-only and must never write to the API.
 - Reuse the request helpers in `src/lib/api.ts`, date formatting in `src/lib/format.ts`, and view metadata in `src/lib/views.ts`.
 - Keep Worker lifecycle handlers in `worker/index.ts`, routing in `api.ts`/`admin.ts`, Clerk verification in `auth.ts`, persistence helpers in `db.ts`, feed mapping in `nhl.ts`, `pwhl.ts`, and `nfl.ts`, adapter selection in `feeds.ts`, syncing in `sync.ts`, and finalization in `standings.ts`.
@@ -30,7 +31,15 @@ Weekly Pools is a React/Vite frontend with a Cloudflare Worker, D1, and Clerk. T
 - Frozen schedules cannot change. Feed refreshes must preserve manual overrides and exclusions and reject transient empty replacement slates.
 - Finalization requires at least one game, every game final/void, and a passed deadline. NFL ties and games moved to another official week are void. Incomplete entries are excluded, tied point totals share ranks, and recalculation replaces previous standings atomically. Combined season totals use only finalized league weeks and include players who entered any league. NFL season 2026 shares the `2026-27` pool season key with hockey, while NFL views display its season year and official week number.
 
+- Optional email switches default off per league and type. Welcome is once for new accounts after launch and verified primary-email selection. Reminders run Friday (NHL/PWHL) or Thursday (NFL) at 9 a.m. Eastern, only while open and without a complete entry. Recaps snapshot recipients/results atomically at first finalization and send the next 9 a.m. Eastern; never resend corrections or backfill historical weeks. Recheck eligibility before delivery, keep atomic job claims, and put ambiguous provider outcomes in review rather than automatically retrying. Sending requires an explicit launch timestamp and enable switch; local preview never sends mail. Explicitly requested real example emails may use an isolated temporary remote email binding restricted to a verified test destination; do not enable the application pipeline or upgrade a plan for these tests.
+
 ## Editing and verification
+
+Reminders pause per league after four confirmed sends without a complete entry. Keep counters
+and private re-engagement markers in `email_reminder_engagement`; successful job transitions
+increment them atomically. `saveEntry` appends the complete-entry reset from `worker/email/store.ts`
+to its pick replacement batch. Incomplete entries, sign-ins, and preference changes do not reset
+the count. No re-engagement messages are implemented yet.
 
 Use the configured Prettier style: two-space indentation, single quotes, no semicolons, 100-character print width. Prefer small named helpers for repeated domain behavior; avoid generic layers for one-off markup or SQL. Remove obsolete code and CSS when replacing a path. Preserve CSS cascade order and check mobile layouts when changing selectors or breakpoints.
 

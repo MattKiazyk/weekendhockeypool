@@ -1,3 +1,6 @@
+import { isEmailPreferences } from '../src/lib/email'
+import { readSettings, saveSettings, syncEmailAccount } from './email/store'
+import { clerkWebhook } from './email/webhook'
 import {
   addDays,
   easternTimeAt,
@@ -21,6 +24,32 @@ import type { Env } from './types'
 export async function api(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url)
   const path = url.pathname
+  if (path === '/api/webhooks/clerk' && request.method === 'POST') return clerkWebhook(request, env)
+  if (path === '/api/email-settings' && (request.method === 'GET' || request.method === 'PUT')) {
+    const user = await auth(request, env)
+    if (!user) return error('Sign in required', 401)
+    if (user.emailAccount) await syncEmailAccount(env, user.emailAccount)
+    if (request.method === 'PUT') {
+      let body: unknown
+      try {
+        body = await request.json()
+      } catch {
+        return error('Invalid email preferences', 400)
+      }
+      if (!isEmailPreferences(body))
+        return error('Expected reminder and recap switches for each league', 400)
+      if (
+        !(await env.DB.prepare(
+          'SELECT clerk_id FROM email_accounts WHERE clerk_id=? AND deleted_at IS NULL',
+        )
+          .bind(user.userId)
+          .first())
+      )
+        return error('Email account is unavailable', 409)
+      await saveSettings(env.DB, user.userId, body)
+    }
+    return json(await readSettings(env.DB, user.userId))
+  }
   const start = url.searchParams.get('start')
   const requestedLeague = url.searchParams.get('league') ?? 'nhl'
   if (path !== '/api/season' && !isLeague(requestedLeague)) return error('Invalid league', 400)
@@ -46,6 +75,7 @@ export async function api(request: Request, env: Env): Promise<Response> {
     const user = await auth(request, env)
     if (!user) return error('Sign in required', 401)
     await savePlayer(env.DB, user)
+    if (user.emailAccount) await syncEmailAccount(env, user.emailAccount)
     return json({
       username: user.username,
       isAdmin: !!env.ADMIN_CLERK_USER_ID && user.userId === env.ADMIN_CLERK_USER_ID,

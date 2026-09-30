@@ -1,6 +1,7 @@
 import type { Game, Weekend, Pick, Side, Entry, LeagueId } from '../src/lib/pool'
 import type { Player } from './types'
 import { nowIso } from './http'
+import { resetReminderStatement } from './email/store'
 
 interface GameRow {
   id: number
@@ -195,6 +196,7 @@ export async function saveEntry(
         )
         .bind(league, start, userId, pick.gameId, pick.side, pick.confidence),
     ),
+    resetReminderStatement(db, league, start, userId, timestamp),
   ]
   await db.batch(statements)
   return timestamp

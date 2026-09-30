@@ -89,6 +89,97 @@ Worker tests run the real migrations and queries in an in-memory SQLite database
 
 After UI changes, check desktop and mobile layouts, switch leagues, select and swap confidence numbers, submit and reload NHL/NFL preview entries, switch open/locked/final states, and visit Standings, Season, and About. Check the PWHL coming-soon state, NFL past-week/offseason states, and three-league combined season filter. Verify guest pick visibility after signing out. Keep responsive CSS in source order: later rules may intentionally refine an earlier breakpoint.
 
+## Transactional email
+
+Email Settings (`#email-settings`) is available to signed-in users. Each account has separate NHL,
+PWHL, and NFL pick-reminder and recap switches; all six default off for both new and existing accounts.
+Only the verified primary Clerk address receives mail. Email addresses are private and never appear
+in entrant or standings responses. Preview settings use browser-local
+`hockey-pool-demo-email-settings-v1` storage and never call the email API or send mail.
+
+- Welcome: once for accounts created at or after `EMAIL_LAUNCH_AT`, after primary-email verification.
+  Explains confidence picks and deadlines, and that play is free with no betting, money, or prizes.
+- Reminders: 9 a.m. America/New_York on Friday for NHL/PWHL and Thursday for NFL, for subscribers
+  who need a complete entry while a nonempty slate is open. A delayed cron can catch up later that
+  same day; delivery always rechecks the entry and deadline.
+  After four successfully sent reminders without a complete entry, reminders pause for that
+  league. Submitting a complete entry resets the count and resumes eligible reminders. Signing
+  in or changing email switches does not reset it; welcome and recap emails are unaffected.
+  Private `email_reminder_engagement.suppressed_at` marks current candidates for future
+  re-engagement messaging. No re-engagement emails are sent yet. Failed and ambiguous sends do
+  not count; the successful job transition and counter update are atomic.
+- Recaps: the next 9 a.m. Eastern strictly after first standings publication. Recipients must have
+  subscribed before publication, including users who did not enter. Show ranks 1–10 (including
+  ties at tenth), plus the recipient’s lower-ranked result. Recipient lists and standings are
+  snapshotted atomically with publication; corrections do not resend and historical weeks do not
+  backfill. Disabling and re-enabling after publication does not restore eligibility for that recap.
+
+All messages have HTML and plain-text alternatives and use **Weekly Pools <noreply@weeklypools.ca>**.
+Every footer explains the settings controls and links to the signed-in settings page; replies are
+not monitored. Welcome is a one-time account email, independent of the six switches.
+
+`worker/email/store.ts` owns private account/preference persistence and recap snapshots;
+`webhook.ts` verifies Clerk events; `templates.ts` renders email; `delivery.ts` schedules and sends.
+The existing 15-minute cron runs email processing after schedule/results work, even if that work
+fails. A run claims at most 25 jobs. Explicit rate/daily quota rejections retry with backoff (up to
+six delivery attempts); reminder jobs expire at lock. Unknown provider outcomes and stale sending
+claims are marked `review` to avoid automatically duplicating potentially accepted mail. Permanent
+configuration/recipient rejections are `failed`; ineligible jobs are `skipped`. This does not provide
+exactly-once delivery across D1 and Cloudflare. Preparation failures retry without contacting the
+provider. Addresses and message bodies are not written to application logs.
+
+`GET /api/email-settings` returns `{ email, verified, preferences }`; authenticated
+`PUT /api/email-settings` accepts exactly `{ nhl: { reminder, recap }, pwhl: { reminder, recap },
+nfl: { reminder, recap } }` with boolean values and updates only the caller.
+`POST /api/webhooks/clerk` uses a verified Svix signature, independently of browser authentication.
+Subscribe that endpoint to `user.created`, `user.updated`, and `user.deleted`. Events are deduplicated
+and ordered by account update/event timestamps; permanent deletion tombstones prevent resurrection.
+Authenticated account access also refreshes primary-email state without enabling optional mail.
+
+### Email rollout (requires separate deployment authorization)
+
+The repository ships with `EMAIL_ENABLED=false` and an empty `EMAIL_LAUNCH_AT`, so no mail is sent.
+Do not enable a remote email binding for local development. Wrangler simulates the native email
+binding locally; unit tests mock delivery, Clerk, and feeds and use the real migrations.
+
+1. Confirm access to [Cloudflare Email Sending](https://developers.cloudflare.com/email-service/)
+   on Workers Paid. Onboard `weeklypools.ca` as a sending domain and verify the DNS records Cloudflare
+   requests. Existing Clerk DNS and unrelated records must remain intact.
+2. Configure the native `EMAIL` send binding, restricted to `noreply@weeklypools.ca`, as in
+   `wrangler.jsonc`. Configure `CLERK_WEBHOOK_SIGNING_SECRET` as a Worker secret, never a `VITE_` value.
+   Register `https://weeklypools.ca/api/webhooks/clerk` in the existing Clerk application.
+3. Run the required checks on Node 24. Apply migrations `0011_email.sql` and
+   `0012_reminder_engagement.sql` remotely and deploy only
+   with explicit authorization. Leave sending disabled until setup and controlled tests pass.
+4. Validate signed webhook delivery, a new verified test signup, all-off settings, opt-in/save/reload,
+   opt-out suppression, and controlled HTML/plain-text inbox delivery. Local preview and mocked tests
+   do not establish real Clerk webhook or Cloudflare deliverability.
+5. Set `EMAIL_LAUNCH_AT` to the actual activation instant as a full UTC ISO timestamp and set
+   `EMAIL_ENABLED=true`. Never backdate launch or bulk-enable preferences. Accounts created before
+   launch do not receive welcome backfill, and jobs created before launch are not delivered.
+6. Observe Worker logs and Cloudflare email logs for the first scheduled reminders/recaps. Inspect
+   D1 `email_jobs` for `failed`/`review` statuses and provider `message_id`. Investigate ambiguous
+   jobs in Cloudflare before any manual retry; never blindly reset review jobs to pending.
+
+To stop sending, set `EMAIL_ENABLED=false`; preserve the launch timestamp and delivery records when
+re-enabling. There is no automatic retry of review/failed jobs. Remote configuration, DNS, migrations,
+real email testing, and deployment are not performed by local implementation checks.
+
+### Free example-email verification — September 29, 2026
+
+Cloudflare Email Routing is enabled for `weeklypools.ca`, with its managed email DNS records,
+and `mattkiazyk@gmail.com` is a verified account-level destination. The three sample welcome,
+reminder, and recap messages were accepted by Cloudflare using the legacy MIME `EmailMessage`
+API through an isolated temporary Worker with a remote email binding restricted to that address.
+The temporary development session was stopped after sending. No paid plan upgrade, production
+application deployment, remote D1 migration, or automated email activation was performed.
+
+The structured REST sending API rejected this routing-only setup as `sending_disabled`; use the
+verified-destination MIME route for these free examples. This test confirms provider acceptance,
+not inbox placement. Check Gmail and spam for subjects beginning `[EXAMPLE]`. General user
+emails still require the Email Sending rollout above. Explicitly requested real example sends
+must remain isolated from the application's development preview and automated email pipeline.
+
 ## Production
 
 `wrangler.jsonc` configures `weeklypools.ca` and the retained `pool.mattkiazyk.com` and `hockey.mattkiazyk.com` custom domains on the existing Worker, using the same D1 database and 15-minute cron. Configure matching Clerk production keys and the admin user on the Worker. Ensure Clerk allows the production origin.
