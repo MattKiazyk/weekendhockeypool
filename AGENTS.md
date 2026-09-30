@@ -43,6 +43,10 @@ increment them atomically. `saveEntry` appends the complete-entry reset from `wo
 to its pick replacement batch. Incomplete entries, sign-ins, and preference changes do not reset
 the count. No re-engagement messages are implemented yet.
 
+Production email sending is enabled; the activation cutoff is in `wrangler.jsonc` and the
+README rollout record. Preserve that timestamp on future deployments and when pausing or
+resuming delivery. Development examples remain disabled; never backdate launch for tests.
+
 Use the configured Prettier style: two-space indentation, single quotes, no semicolons, 100-character print width. Prefer small named helpers for repeated domain behavior; avoid generic layers for one-off markup or SQL. Remove obsolete code and CSS when replacing a path. Preserve CSS cascade order and check mobile layouts when changing selectors or breakpoints.
 
 Run `npm run format` and `npm run check` before handing off changes. Use Node 24 from `.nvmrc`; tests rely on `node:sqlite`. Add focused regressions when changing pool rules, privacy, timing, persistence, or feed handling. `tests/helpers/database.ts` adapts only the D1 methods used by these tests; it runs the actual numbered SQL migrations. Mock Clerk and league feeds rather than reaching external services from tests.

@@ -138,7 +138,9 @@ Authenticated account access also refreshes primary-email state without enabling
 
 ### Email rollout (requires separate deployment authorization)
 
-The repository ships with `EMAIL_ENABLED=false` and an empty `EMAIL_LAUNCH_AT`, so no mail is sent.
+Production sending is enabled with the launch timestamp recorded below. Development example
+configuration keeps sending disabled. To pause production, set `EMAIL_ENABLED=false` while
+preserving the existing launch timestamp and delivery records.
 Do not enable a remote email binding for local development. Wrangler simulates the native email
 binding locally; unit tests mock delivery, Clerk, and feeds and use the real migrations.
 
@@ -164,6 +166,25 @@ binding locally; unit tests mock delivery, Clerk, and feeds and use the real mig
 To stop sending, set `EMAIL_ENABLED=false`; preserve the launch timestamp and delivery records when
 re-enabling. There is no automatic retry of review/failed jobs. Remote configuration, DNS, migrations,
 real email testing, and deployment are not performed by local implementation checks.
+
+### Production sender setup — September 30, 2026
+
+The shared Cloudflare account already has Workers Paid. `weeklypools.ca` is onboarded for
+Email Sending with Cloudflare-managed `cf-bounce` MX/SPF/DKIM and `_dmarc` records. Three
+controlled HTML/plain-text examples sent through the production Email Sending API reached
+the owner's Gmail inbox. This setup did not upgrade the account's plan.
+
+The production Clerk instance now subscribes `https://weeklypools.ca/api/webhooks/clerk`
+to `user.created`, `user.updated`, and `user.deleted`. Its signing secret is encrypted on the
+Worker as `CLERK_WEBHOOK_SIGNING_SECRET`. An unsigned production request returned HTTP 400.
+A real signed `user.created` event stored the controlled test account as verified in D1.
+Authenticated production settings passed all-off defaults, opt-in/save/reload, and opt-out;
+the test account was restored to all-off. The native structured Worker email binding also
+accepted a controlled welcome example. Automated sending was enabled with
+`EMAIL_LAUNCH_AT=2026-09-30T15:47:59.333Z`. Accounts created before this cutoff, including the
+controlled test account, receive no welcome backfill. The password-based signup verification
+screen was not exercised; the operator created the account through Clerk and testing used
+Clerk's test-account impersonation session. No production picks or standings were changed.
 
 ### Free example-email verification — September 29, 2026
 
