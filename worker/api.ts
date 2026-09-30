@@ -19,14 +19,14 @@ import { getWeek, getEntry, saveEntry, savePlayer } from './db'
 import { syncSchedule } from './sync'
 import { nflWeekContext } from './nfl'
 import { error, json, validStart } from './http'
-import type { Env } from './types'
+import type { Env, Player } from './types'
 
-export async function api(request: Request, env: Env): Promise<Response> {
+export async function api(request: Request, env: Env, verifiedUser?: Player): Promise<Response> {
   const url = new URL(request.url)
   const path = url.pathname
   if (path === '/api/webhooks/clerk' && request.method === 'POST') return clerkWebhook(request, env)
   if (path === '/api/email-settings' && (request.method === 'GET' || request.method === 'PUT')) {
-    const user = await auth(request, env)
+    const user = verifiedUser ?? (await auth(request, env))
     if (!user) return error('Sign in required', 401)
     if (user.emailAccount) await syncEmailAccount(env, user.emailAccount)
     if (request.method === 'PUT') {
@@ -72,7 +72,7 @@ export async function api(request: Request, env: Env): Promise<Response> {
     return json({ openLeagues })
   }
   if (path === '/api/me' && request.method === 'GET') {
-    const user = await auth(request, env)
+    const user = verifiedUser ?? (await auth(request, env))
     if (!user) return error('Sign in required', 401)
     await savePlayer(env.DB, user)
     if (user.emailAccount) await syncEmailAccount(env, user.emailAccount)
@@ -95,8 +95,8 @@ export async function api(request: Request, env: Env): Promise<Response> {
     if (league === 'nfl') {
       try {
         nflContext = await nflWeekContext()
-      } catch (cause) {
-        console.error('NFL week calendar unavailable', cause)
+      } catch {
+        console.error('NFL week calendar unavailable')
         if (start) return error('NFL schedule is temporarily unavailable', 503)
         const prefetched = await env.DB.prepare(
           'SELECT start_date FROM weekends WHERE league=? AND opens_at <= ? ORDER BY opens_at DESC LIMIT 1',
@@ -208,7 +208,7 @@ export async function api(request: Request, env: Env): Promise<Response> {
     })
   }
   if (path === '/api/entry' && (request.method === 'GET' || request.method === 'PUT')) {
-    const user = await auth(request, env)
+    const user = verifiedUser ?? (await auth(request, env))
     if (!user) return error('Sign in to manage your entry', 401)
     if (request.method === 'GET') {
       if (!validStart(start, league)) return error('Invalid weekend date', 400)
@@ -218,7 +218,15 @@ export async function api(request: Request, env: Env): Promise<Response> {
       const entry = await getEntry(env.DB, league, start, user.userId)
       return json({ entry })
     }
-    const body = (await request.json()) as { league?: unknown; startDate?: string; picks?: Pick[] }
+    let body: { league?: unknown; startDate?: string; picks?: Pick[] }
+    try {
+      const parsed: unknown = await request.json()
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
+        return error('Invalid entry', 400)
+      body = parsed as typeof body
+    } catch {
+      return error('Invalid JSON body', 400)
+    }
     const bodyLeague = body.league ?? 'nhl'
     if (!isLeague(bodyLeague)) return error('Invalid league', 400)
     const bodyStart = body.startDate ?? null
@@ -234,11 +242,19 @@ export async function api(request: Request, env: Env): Promise<Response> {
     const errors = validatePicks(body.picks, week.games)
     if (errors.length) return json({ error: errors[0], errors }, 400)
     if (!(await savePlayer(env.DB, user))) return error('Set a Clerk username before entering', 422)
-    const timestamp = await saveEntry(env.DB, bodyLeague, bodyStart, user.userId, body.picks)
-    return json({ saved: true, updatedAt: timestamp })
+    try {
+      const timestamp = await saveEntry(env.DB, bodyLeague, bodyStart, user.userId, body.picks)
+      return json({ saved: true, updatedAt: timestamp })
+    } catch (cause) {
+      // The database remains the final authority if the deadline passes between
+      // validation and the atomic save. Never return a database error to clients.
+      if (cause instanceof Error && cause.message.includes('entries are closed'))
+        return error('Entries are closed', 409)
+      throw cause
+    }
   }
   if (path === '/api/picks' && request.method === 'GET') {
-    const user = await auth(request, env)
+    const user = verifiedUser ?? (await auth(request, env))
     if (!user) return error('Sign in to view players’ picks', 401)
     if (!validStart(start, league)) return error('Invalid weekend date', 400)
     const week = await getWeek(env.DB, league, start)
@@ -254,7 +270,7 @@ export async function api(request: Request, env: Env): Promise<Response> {
     return json({ picks: rows.results })
   }
   if (path.startsWith('/api/admin/') && request.method === 'POST') {
-    const user = await auth(request, env)
+    const user = verifiedUser ?? (await auth(request, env))
     if (!user || !env.ADMIN_CLERK_USER_ID || user.userId !== env.ADMIN_CLERK_USER_ID)
       return error('Admin access required', 403)
     return admin(request, env, path)

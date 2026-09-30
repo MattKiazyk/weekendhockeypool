@@ -234,3 +234,100 @@ The procedure below documents the cutover for future maintenance:
 The September 28 release used commit `d96b78f` and Worker version `1caa2b26-c0ee-4f8d-ac31-7696be9440af`. Clerk was migrated in place to `pool.mattkiazyk.com`; its Frontend API is `clerk.pool.mattkiazyk.com` and account portal is `accounts.pool.mattkiazyk.com`. Existing-account sign-in, saved entries, admin visibility, sign-out, APIs, and cron were verified. The hockey-domain 308 redirect was active. These are historical settings, not verification of the new domain.
 
 See [AGENTS.md](AGENTS.md) for maintenance guidance.
+
+## Native API (local implementation; deployment required)
+
+The versioned native API is configured for **https://api.weeklypools.ca/v1**. Its canonical
+machine-readable contract is [`docs/api/openapi.yaml`](docs/api/openapi.yaml). Every change to
+an API route, input/output, authentication requirement, or error behavior must update that
+contract and its conformance tests. `npm run api:check` validates OpenAPI; `npm run check` also
+runs route/response conformance and security regressions.
+
+`worker/native/api.ts` owns native routing, protection, and delegation to the existing player
+handlers in `worker/api.ts`; `worker/native/store.ts` owns approvals and device-key persistence;
+`worker/native/http.ts` owns bounded JSON parsing and secure v1 errors. `worker/auth.ts` verifies
+Clerk sessions. All native pool writes use the same rules and atomic `saveEntry` path as the
+website, including opening/deadline database triggers and private pick visibility.
+
+### Login and device provisioning
+
+1. Log in using the **existing Weekly Pools Clerk instance** through a supported native SDK
+   or Clerk-supported browser-based desktop flow. Clerk handles passwords, MFA, session
+   refresh, and logout. This API does not implement password or token-refresh endpoints.
+2. Your configured `ADMIN_CLERK_USER_ID` is implicitly approved and can obtain its first key
+   immediately. Other users require approval through the admin endpoints below. Website
+   access remains independent of native API approval.
+3. Send `POST /v1/keys`, `Authorization: Bearer <Clerk session token>`, and
+   `Content-Type: application/json`, with `{"label":"My iPhone"}`. Save the returned `secret`
+   in Keychain, Android Keystore-backed storage, or the desktop platform's credential store.
+   Keys are **per user/device**, not shared secrets embedded in a publicly distributed app.
+4. Send `X-API-Key: <device secret>` for ordinary reads. Add a **matching owner's Clerk bearer
+   session** for `/me`, `/entry`, `/picks`, and `/email-settings`. `/entry` supports GET and PUT;
+   PUT replaces the complete entry, using internal game IDs and unique confidence numbers.
+5. Use `GET /v1/keys` to list your key metadata. `POST /v1/keys/{id}/rotate` with `{}` returns
+   a replacement secret once and immediately invalidates the old one. Securely replace the
+   locally stored secret; concurrent rotations can return `409`. `DELETE /v1/keys/{id}` revokes
+   the key. Keys have no automatic expiry. A lost rotation response requires creating another
+   key through Clerk login or rotating again; there is no secret-recovery endpoint.
+
+Key management uses Clerk bearer authentication and account approval; it does not require a
+previous key. Only the configured admin may `GET /v1/admin/approvals`,
+`PUT /v1/admin/approvals/{userId}` with `{}`, `DELETE /v1/admin/approvals/{userId}`, or
+`DELETE /v1/admin/users/{userId}/keys`. Removing approval atomically revokes all keys;
+reapproval never restores them. Deleted-account webhook tombstones also block key-only reads. The implicit admin approval cannot be removed through the API.
+Admin key revocation alone preserves approval and allows replacement keys. Approval targets
+are Clerk user IDs, not email addresses; approval can precede account creation.
+
+The API controls approved accounts and credentials, **not app identity**. An approved user
+could reuse their credentials in another client. Native v1 has no app attestation and exposes
+no schedule/result administration or Clerk webhook routes. League icon paths refer to assets
+on `https://weeklypools.ca`, not the API host.
+
+### Security and errors
+
+Native requests authenticate explicit bearer tokens only; cookies cannot substitute for a
+session. Clerk verifies signatures and token lifetimes, and the issuer must match the configured
+publishable key. Native tokens without `azp` are accepted; tokens with `azp` must match
+`CLERK_NATIVE_AUTHORIZED_PARTIES` (comma-separated origins; production default
+`https://weeklypools.ca`). Set development login origins explicitly in `.dev.vars`; never infer
+trusted origins from request headers or the API hostname. Optional `CLERK_JWT_KEY` is the
+matching Clerk JWT **public** PEM key for networkless verification.
+
+Writes require JSON objects with `Content-Type: application/json`, limited to 64 KiB even
+without Content-Length. All v1 responses are JSON with `Cache-Control: no-store`,
+`X-Content-Type-Options: nosniff`, and `X-Request-Id`. Errors are
+`{"error":{"code":"...","message":"...","requestId":"..."}}`; clients should branch on status
+and code, not message text. Unexpected errors are generic and logs exclude exception messages,
+credentials, body contents, and private email addresses. The website also returns generic
+unexpected errors. v1 does not enable CORS; native clients do not require CORS.
+
+Cloudflare rate-limit bindings enforce **120 requests/minute/IP**, **120 reads/minute/user**,
+**20 mutations/minute/user**, and an additional **5 key/approval operations/minute/user**.
+User buckets span all device keys. `429` includes `Retry-After: 60`; clients should wait before
+retrying. Missing/failed protection bindings return `503`. These are per-location, eventually
+consistent abuse controls, not exact global quotas. Invalid requests still consume applicable
+limits; avoid aggressive polling. The API host always runs the Worker before assets and returns
+JSON `404` for unknown routes and `405` with `Allow` for unsupported methods.
+
+### Native API rollout (requires separate authorization)
+
+1. Run `npm run format` and `npm run check` using Node 24. Migration
+   `0013_native_api.sql` follows the existing migrations and adds only native approvals/keys.
+2. Confirm the configured admin Clerk ID, matching production Clerk keys, and trusted native
+   login origins. Do not put secrets in browser variables. Keep email enablement unchanged.
+3. When explicitly authorized, apply pending migrations remotely, build, and deploy the
+   existing Worker. Wrangler adds `api.weeklypools.ca` as a custom domain, the `ASSETS` binding,
+   Worker-first routing, and four rate-limit bindings with distinct namespace IDs 1001–1004.
+   Verify those IDs do not conflict with other account rate-limit namespaces before deployment.
+   All website requests now invoke the Worker, which delegates non-API website paths to ASSETS.
+4. Verify DNS/TLS for `api.weeklypools.ca`, website assets and real existing-account login,
+   actual native Clerk tokens on each target platform, first-key provisioning, key-only reads,
+   matching-session saves/reloads, cross-user rejection, rotation/revocation, and JSON errors
+   on `/`, unknown paths, and legacy `/api/*` paths. Verify rate-limit `429` responses and headers.
+5. Monitor sanitized request IDs and HTTP status counts, particularly `401`, `403`, `429`, and
+   `503`. Do not log Authorization or X-API-Key. No new email sending or schedule cron is added.
+
+Local tests use real SQL migrations, signed test JWTs with real Clerk SDK verification, mocked
+Clerk user lookup/feed access, and mock rate-limit bindings. They do not establish real native
+login compatibility, DNS/TLS, or production limiter behavior. For local native requests use
+`http://127.0.0.1:5173/v1/...`; website production and alternate Worker hosts do not expose v1.

@@ -1,0 +1,1511 @@
+openapi: 3.1.0
+info:
+  title: Weekly Pools native API
+  version: 1.0.0
+  description: >-
+    Clerk-managed login; no password/login endpoint. Log in with a supported Clerk native SDK or
+    supported browser-based desktop flow, then send its short-lived session token as Authorization:
+    Bearer <session-token>. Approved users POST /keys with {"label":"My device"}, save the returned
+    secret in platform secure storage, and use X-API-Key on pool calls. Personal calls require the
+    key owner's matching session. Refresh Clerk tokens through Clerk, never this API. The configured
+    admin account is implicitly approved; all others require admin approval. These controls restrict
+    accounts, not app identity. Do not embed shared keys in public apps.
+
+
+    Rotate by POST /keys/{id}/rotate with {} and a current Clerk session, securely replace the
+    stored secret immediately, and discard the old secret. DELETE /keys/{id} revokes a key. Keys
+    remain valid until revoked, but approval removal invalidates every key and reapproval never
+    restores them.
+
+
+    All responses are JSON and no-store, with X-Content-Type-Options: nosniff and X-Request-Id.
+    Errors use {error:{code,message,requestId}}. Never rely on message text for branching. 401 means
+    invalid key or session, 403 means forbidden or unapproved access, 409 means conflicting state.
+    Invalid JSON/shape is 400, >64 KiB is 413, non-JSON writes are 415, unexpected errors are
+    generic 500. Unsupported methods return 405 and Allow; unknown paths return 404. No cookies or
+    CORS are supported.
+
+
+    Rate limits per 60 seconds: 120/IP before expensive work; 120 GETs/user or 20 mutations/user
+    across all their keys; management also allows 5 operations/user. All applicable buckets apply.
+    429 includes Retry-After: 60. Protection failure returns 503. Cloudflare limits are per-location
+    and eventually consistent, not exact global quotas. Key-only reads count against the key owner.
+    Native v1 does not expose pool administration or webhooks.
+
+
+    Preserves website field naming, including game_id and start_date in listings. Week dates,
+    opening times, and deadlines use America/New_York. Only finalized weeks contribute to season
+    totals. NFL 2026 uses season key 2026-27.
+servers:
+  - url: https://api.weeklypools.ca/v1
+paths:
+  /leagues:
+    get:
+      summary: Supported leagues and display metadata
+      operationId: get_leagues
+      security:
+        - DeviceKey: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/NoSniff'
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Leagues'
+        default:
+          $ref: '#/components/responses/ApiError'
+      x-rate-limit:
+        ip: 120
+        readsPerUser: 120
+      description: Icon paths are relative to https://weeklypools.ca; the API host does not serve static assets.
+  /open-leagues:
+    get:
+      summary: Leagues with released slates currently accepting entries
+      operationId: get_open_leagues
+      security:
+        - DeviceKey: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/NoSniff'
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenLeagues'
+        default:
+          $ref: '#/components/responses/ApiError'
+      x-rate-limit:
+        ip: 120
+        readsPerUser: 120
+  /week:
+    get:
+      summary: Selected or default week, including games and frozen team records
+      operationId: get_week
+      security:
+        - DeviceKey: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/NoSniff'
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeekResponse'
+        default:
+          $ref: '#/components/responses/ApiError'
+      x-rate-limit:
+        ip: 120
+        readsPerUser: 120
+      parameters:
+        - name: league
+          in: query
+          schema:
+            type: string
+            enum:
+              - nhl
+              - pwhl
+              - nfl
+            default: nhl
+        - name: start
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description:
+            'Eastern pool-week start date: Friday for hockey, Thursday for NFL. NFL weekNumber is
+            official ESPN week assignment.'
+  /weeks:
+    get:
+      summary: Available weeks, newest first
+      operationId: get_weeks
+      security:
+        - DeviceKey: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/NoSniff'
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Weeks'
+        default:
+          $ref: '#/components/responses/ApiError'
+      x-rate-limit:
+        ip: 120
+        readsPerUser: 120
+      parameters:
+        - name: league
+          in: query
+          schema:
+            type: string
+            enum:
+              - nhl
+              - pwhl
+              - nfl
+            default: nhl
+  /entrants:
+    get:
+      summary: Public entrant usernames
+      operationId: get_entrants
+      security:
+        - DeviceKey: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/NoSniff'
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entrants'
+        default:
+          $ref: '#/components/responses/ApiError'
+      x-rate-limit:
+        ip: 120
+        readsPerUser: 120
+      parameters:
+        - name: league
+          in: query
+          schema:
+            type: string
+            enum:
+              - nhl
+              - pwhl
+              - nfl
+            default: nhl
+        - name: start
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description:
+            'Eastern pool-week start date: Friday for hockey, Thursday for NFL. NFL weekNumber is
+            official ESPN week assignment.'
+  /standings:
+    get:
+      summary: Final weekly standings
+      operationId: get_standings
+      security:
+        - DeviceKey: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/NoSniff'
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Standings'
+        default:
+          $ref: '#/components/responses/ApiError'
+      x-rate-limit:
+        ip: 120
+        readsPerUser: 120
+      parameters:
+        - name: league
+          in: query
+          schema:
+            type: string
+            enum:
+              - nhl
+              - pwhl
+              - nfl
+            default: nhl
+        - name: start
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description:
+            'Eastern pool-week start date: Friday for hockey, Thursday for NFL. NFL weekNumber is
+            official ESPN week assignment.'
+  /season:
+    get:
+      summary: Finalized season totals
+      operationId: get_season
+      security:
+        - DeviceKey: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/NoSniff'
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Season'
+        default:
+          $ref: '#/components/responses/ApiError'
+      x-rate-limit:
+        ip: 120
+        readsPerUser: 120
+      parameters:
+        - name: league
+          in: query
+          schema:
+            type: string
+            enum:
+              - nhl
+              - pwhl
+              - nfl
+              - all
+            default: nhl
+        - name: season
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: ^\d{4}-\d{2}$
+          example: 2026-27
+  /me:
+    get:
+      summary: Caller profile
+      operationId: get_me
+      security:
+        - DeviceKey: []
+          ClerkSession: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/NoSniff'
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+        default:
+          $ref: '#/components/responses/ApiError'
+      x-rate-limit:
+        ip: 120
+        readsPerUser: 120
+  /entry:
+    get:
+      summary: Caller entry
+      operationId: get_entry
+      security:
+        - DeviceKey: []
+          ClerkSession: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/NoSniff'
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntryResponse'
+        default:
+          $ref: '#/components/responses/ApiError'
+      x-rate-limit:
+        ip: 120
+        readsPerUser: 120
+      parameters:
+        - name: league
+          in: query
+          schema:
+            type: string
+            enum:
+              - nhl
+              - pwhl
+              - nfl
+            default: nhl
+        - name: start
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description:
+            'Eastern pool-week start date: Friday for hockey, Thursday for NFL. NFL weekNumber is
+            official ESPN week assignment.'
+    put:
+      summary: Atomically replace caller picks
+      operationId: put_entry
+      security:
+        - DeviceKey: []
+          ClerkSession: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/NoSniff'
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Saved'
+        default:
+          $ref: '#/components/responses/ApiError'
+      x-rate-limit:
+        ip: 120
+        writesPerUser: 20
+      requestBody:
+        required: true
+        description: JSON only, maximum 64 KiB.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EntryWrite'
+            example:
+              league: nhl
+              startDate: 2026-10-09
+              picks:
+                - gameId: 1
+                  side: away
+                  confidence: 1
+      description:
+        Every retained game exactly once, confidence 1–N exactly once. Enforces opening time
+        and earliest-game deadline in both application logic and database triggers. 409 when closed;
+        422 when a Clerk username is missing.
+  /picks:
+    get:
+      summary: Revealed player picks after the actual entry deadline
+      operationId: get_picks
+      security:
+        - DeviceKey: []
+          ClerkSession: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/NoSniff'
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicPicks'
+        default:
+          $ref: '#/components/responses/ApiError'
+      x-rate-limit:
+        ip: 120
+        readsPerUser: 120
+      parameters:
+        - name: league
+          in: query
+          schema:
+            type: string
+            enum:
+              - nhl
+              - pwhl
+              - nfl
+            default: nhl
+        - name: start
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description:
+            'Eastern pool-week start date: Friday for hockey, Thursday for NFL. NFL weekNumber is
+            official ESPN week assignment.'
+      description: Returns 403 before the actual deadline, regardless of status labels.
+  /email-settings:
+    get:
+      summary: Caller private verified email state and preferences
+      operationId: get_email_settings
+      security:
+        - DeviceKey: []
+          ClerkSession: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/NoSniff'
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailSettings'
+        default:
+          $ref: '#/components/responses/ApiError'
+      x-rate-limit:
+        ip: 120
+        readsPerUser: 120
+    put:
+      summary: Replace caller email preferences
+      operationId: put_email_settings
+      security:
+        - DeviceKey: []
+          ClerkSession: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/NoSniff'
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailSettings'
+        default:
+          $ref: '#/components/responses/ApiError'
+      x-rate-limit:
+        ip: 120
+        writesPerUser: 20
+      requestBody:
+        required: true
+        description: JSON only, maximum 64 KiB.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailPreferences'
+  /keys:
+    get:
+      summary: List caller device-key metadata, including revoked keys
+      operationId: get_keys
+      security:
+        - ClerkSession: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/NoSniff'
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceKeys'
+        default:
+          $ref: '#/components/responses/ApiError'
+      x-rate-limit:
+        ip: 120
+        readsPerUser: 120
+        keyOperationsPerUser: 5
+    post:
+      summary: Create an approved caller device key
+      operationId: post_keys
+      security:
+        - ClerkSession: []
+      responses:
+        '201':
+          description: Success
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/NoSniff'
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceKeySecret'
+        default:
+          $ref: '#/components/responses/ApiError'
+      x-rate-limit:
+        ip: 120
+        writesPerUser: 20
+        keyOperationsPerUser: 5
+      requestBody:
+        required: true
+        description: JSON only, maximum 64 KiB.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateKey'
+            example:
+              label: My iPhone
+      description:
+        First-key bootstrap requires only a Clerk bearer session and account approval. Keys
+        never expire automatically. Secret returned once; only its SHA-256 digest is stored.
+  /keys/{id}:
+    delete:
+      summary: Revoke caller device key
+      operationId: delete_keys__id_
+      security:
+        - ClerkSession: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/NoSniff'
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceKeyResponse'
+        default:
+          $ref: '#/components/responses/ApiError'
+      x-rate-limit:
+        ip: 120
+        writesPerUser: 20
+        keyOperationsPerUser: 5
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      description: Idempotent for existing caller-owned keys; other users’ keys return 404.
+  /keys/{id}/rotate:
+    post:
+      summary: Immediately replace caller key secret
+      operationId: post_keys__id__rotate
+      security:
+        - ClerkSession: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/NoSniff'
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceKeySecret'
+        default:
+          $ref: '#/components/responses/ApiError'
+      x-rate-limit:
+        ip: 120
+        writesPerUser: 20
+        keyOperationsPerUser: 5
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        description: JSON only, maximum 64 KiB.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmptyBody'
+            example: {}
+      description:
+        Same key ID and label; old secret becomes invalid immediately. Concurrent rotations use
+        compare-and-swap; a losing request returns 409. Revoked or unknown keys return 404.
+  /admin/approvals:
+    get:
+      summary: List account approvals (configured admin only)
+      operationId: get_admin_approvals
+      security:
+        - ClerkSession: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/NoSniff'
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Approvals'
+        default:
+          $ref: '#/components/responses/ApiError'
+      x-rate-limit:
+        ip: 120
+        readsPerUser: 120
+        keyOperationsPerUser: 5
+  /admin/approvals/{userId}:
+    put:
+      summary: Approve a Clerk user (configured admin only)
+      operationId: put_admin_approvals__userId_
+      security:
+        - ClerkSession: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/NoSniff'
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalResult'
+        default:
+          $ref: '#/components/responses/ApiError'
+      x-rate-limit:
+        ip: 120
+        writesPerUser: 20
+        keyOperationsPerUser: 5
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^user_[a-zA-Z0-9]{1,120}$
+      requestBody:
+        required: true
+        description: JSON only, maximum 64 KiB.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmptyBody'
+            example: {}
+      description:
+        Approves an existing or future Clerk user ID. Does not restore previously revoked keys.
+        The configured admin is implicit and cannot be modified (409).
+    delete:
+      summary: Remove approval and atomically revoke all keys (configured admin only)
+      operationId: delete_admin_approvals__userId_
+      security:
+        - ClerkSession: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/NoSniff'
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalResult'
+        default:
+          $ref: '#/components/responses/ApiError'
+      x-rate-limit:
+        ip: 120
+        writesPerUser: 20
+        keyOperationsPerUser: 5
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^user_[a-zA-Z0-9]{1,120}$
+  /admin/users/{userId}/keys:
+    delete:
+      summary: Revoke every device key for a user (configured admin only)
+      operationId: delete_admin_users__userId__keys
+      security:
+        - ClerkSession: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/NoSniff'
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Revoked'
+        default:
+          $ref: '#/components/responses/ApiError'
+      x-rate-limit:
+        ip: 120
+        writesPerUser: 20
+        keyOperationsPerUser: 5
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^user_[a-zA-Z0-9]{1,120}$
+      description: Does not remove approval; the user can provision replacement keys.
+components:
+  securitySchemes:
+    DeviceKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+    ClerkSession:
+      type: http
+      scheme: bearer
+      bearerFormat: Clerk session JWT
+  schemas:
+    Error:
+      type: object
+      additionalProperties: false
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          properties:
+            code:
+              type: string
+              enum:
+                - unsupported_media_type
+                - payload_too_large
+                - invalid_request
+                - invalid_api_key
+                - approval_required
+                - not_found
+                - key_changed
+                - admin_approval_fixed
+                - temporarily_unavailable
+                - too_many_requests
+                - sign_in_required
+                - https_required
+                - method_not_allowed
+                - admin_required
+                - key_owner_mismatch
+                - forbidden
+                - conflict
+                - username_required
+                - request_failed
+                - internal_error
+            message:
+              type: string
+            requestId:
+              type: string
+              format: uuid
+          required:
+            - code
+            - message
+            - requestId
+      required:
+        - error
+    League:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          enum:
+            - nhl
+            - pwhl
+            - nfl
+        label:
+          type: string
+        name:
+          type: string
+        icon:
+          type: string
+      required:
+        - id
+        - label
+        - name
+        - icon
+    Leagues:
+      type: object
+      additionalProperties: false
+      properties:
+        leagues:
+          type: array
+          items:
+            $ref: '#/components/schemas/League'
+      required:
+        - leagues
+    OpenLeagues:
+      type: object
+      additionalProperties: false
+      properties:
+        openLeagues:
+          type: array
+          items:
+            type: string
+            enum:
+              - nhl
+              - pwhl
+              - nfl
+      required:
+        - openLeagues
+    Team:
+      type: object
+      additionalProperties: false
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        logo:
+          anyOf:
+            - type: string
+            - type: 'null'
+        record:
+          anyOf:
+            - type: string
+            - type: 'null'
+      required:
+        - code
+        - name
+        - logo
+    Game:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: integer
+          minimum: 1
+        sourceId:
+          type: integer
+        startUtc:
+          type: string
+          format: date-time
+        easternDate:
+          type: string
+          format: date
+        away:
+          $ref: '#/components/schemas/Team'
+        home:
+          $ref: '#/components/schemas/Team'
+        state:
+          type: string
+          enum:
+            - scheduled
+            - live
+            - final
+            - void
+        awayScore:
+          anyOf:
+            - type: integer
+            - type: 'null'
+        homeScore:
+          anyOf:
+            - type: integer
+            - type: 'null'
+        winner:
+          anyOf:
+            - type: string
+              enum:
+                - away
+                - home
+            - type: 'null'
+      required:
+        - id
+        - sourceId
+        - startUtc
+        - easternDate
+        - away
+        - home
+        - state
+        - awayScore
+        - homeScore
+        - winner
+    Week:
+      type: object
+      additionalProperties: false
+      properties:
+        league:
+          type: string
+          enum:
+            - nhl
+            - pwhl
+            - nfl
+        startDate:
+          type: string
+          format: date
+        season:
+          type: string
+        weekNumber:
+          anyOf:
+            - type: integer
+            - type: 'null'
+        opensAt:
+          type: string
+          format: date-time
+        lockAt:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+        status:
+          type: string
+          enum:
+            - open
+            - locked
+            - final
+        finalizedAt:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+        games:
+          type: array
+          items:
+            $ref: '#/components/schemas/Game'
+      required:
+        - league
+        - startDate
+        - season
+        - weekNumber
+        - opensAt
+        - lockAt
+        - status
+        - finalizedAt
+        - games
+    WeekResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        week:
+          anyOf:
+            - $ref: '#/components/schemas/Week'
+            - type: 'null'
+        nflOffseason:
+          type: boolean
+      required:
+        - week
+        - nflOffseason
+    WeekListing:
+      type: object
+      additionalProperties: false
+      properties:
+        league:
+          type: string
+          enum:
+            - nhl
+            - pwhl
+            - nfl
+        start_date:
+          type: string
+          format: date
+        season:
+          type: string
+        week_number:
+          anyOf:
+            - type: integer
+            - type: 'null'
+        status:
+          type: string
+          enum:
+            - open
+            - locked
+            - final
+        lock_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+        finalized_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+      required:
+        - league
+        - start_date
+        - season
+        - week_number
+        - status
+        - lock_at
+        - finalized_at
+    Weeks:
+      type: object
+      additionalProperties: false
+      properties:
+        weeks:
+          type: array
+          items:
+            $ref: '#/components/schemas/WeekListing'
+      required:
+        - weeks
+    Entrants:
+      type: object
+      additionalProperties: false
+      properties:
+        entrants:
+          type: array
+          items:
+            type: string
+      required:
+        - entrants
+    Standing:
+      type: object
+      additionalProperties: false
+      properties:
+        username:
+          type: string
+        points:
+          type: integer
+        correct:
+          type: integer
+        rank:
+          type: integer
+          minimum: 1
+      required:
+        - username
+        - points
+        - correct
+        - rank
+    CombinedStanding:
+      type: object
+      additionalProperties: false
+      properties:
+        username:
+          type: string
+        points:
+          type: integer
+        correct:
+          type: integer
+        rank:
+          type: integer
+          minimum: 1
+        nhlPoints:
+          anyOf:
+            - type: integer
+            - type: 'null'
+        pwhlPoints:
+          anyOf:
+            - type: integer
+            - type: 'null'
+        nflPoints:
+          anyOf:
+            - type: integer
+            - type: 'null'
+      required:
+        - username
+        - points
+        - correct
+        - rank
+        - nhlPoints
+        - pwhlPoints
+        - nflPoints
+    Standings:
+      type: object
+      additionalProperties: false
+      properties:
+        standings:
+          type: array
+          items:
+            $ref: '#/components/schemas/Standing'
+      required:
+        - standings
+    Season:
+      type: object
+      additionalProperties: false
+      properties:
+        standings:
+          type: array
+          items:
+            oneOf:
+              - $ref: '#/components/schemas/Standing'
+              - $ref: '#/components/schemas/CombinedStanding'
+      required:
+        - standings
+    Profile:
+      type: object
+      additionalProperties: false
+      properties:
+        username:
+          anyOf:
+            - type: string
+            - type: 'null'
+        isAdmin:
+          type: boolean
+      required:
+        - username
+        - isAdmin
+    Pick:
+      type: object
+      additionalProperties: false
+      properties:
+        gameId:
+          type: integer
+          minimum: 1
+        side:
+          type: string
+          enum:
+            - away
+            - home
+        confidence:
+          type: integer
+          minimum: 1
+      required:
+        - gameId
+        - side
+        - confidence
+    PublicPick:
+      type: object
+      additionalProperties: false
+      properties:
+        username:
+          type: string
+        game_id:
+          type: integer
+          minimum: 1
+        side:
+          type: string
+          enum:
+            - away
+            - home
+        confidence:
+          type: integer
+          minimum: 1
+      required:
+        - username
+        - game_id
+        - side
+        - confidence
+    PublicPicks:
+      type: object
+      additionalProperties: false
+      properties:
+        picks:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicPick'
+      required:
+        - picks
+    Entry:
+      type: object
+      additionalProperties: false
+      properties:
+        picks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Pick'
+        submittedAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - picks
+        - submittedAt
+        - updatedAt
+    EntryResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        entry:
+          anyOf:
+            - $ref: '#/components/schemas/Entry'
+            - type: 'null'
+      required:
+        - entry
+    EntryWrite:
+      type: object
+      additionalProperties: false
+      properties:
+        league:
+          type: string
+          enum:
+            - nhl
+            - pwhl
+            - nfl
+          default: nhl
+        startDate:
+          type: string
+          format: date
+        picks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Pick'
+      required:
+        - startDate
+        - picks
+    Saved:
+      type: object
+      additionalProperties: false
+      properties:
+        saved:
+          const: true
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - saved
+        - updatedAt
+    EmailSwitches:
+      type: object
+      additionalProperties: false
+      properties:
+        reminder:
+          type: boolean
+        recap:
+          type: boolean
+      required:
+        - reminder
+        - recap
+    EmailPreferences:
+      type: object
+      additionalProperties: false
+      properties:
+        nhl:
+          $ref: '#/components/schemas/EmailSwitches'
+        pwhl:
+          $ref: '#/components/schemas/EmailSwitches'
+        nfl:
+          $ref: '#/components/schemas/EmailSwitches'
+      required:
+        - nhl
+        - pwhl
+        - nfl
+    EmailSettings:
+      type: object
+      additionalProperties: false
+      properties:
+        email:
+          anyOf:
+            - type: string
+              format: email
+            - type: 'null'
+        verified:
+          type: boolean
+        preferences:
+          $ref: '#/components/schemas/EmailPreferences'
+      required:
+        - email
+        - verified
+        - preferences
+    DeviceKey:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+          minLength: 1
+          maxLength: 100
+        createdAt:
+          type: string
+          format: date-time
+        rotatedAt:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+        revokedAt:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+      required:
+        - id
+        - label
+        - createdAt
+        - rotatedAt
+        - revokedAt
+    DeviceKeys:
+      type: object
+      additionalProperties: false
+      properties:
+        keys:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeviceKey'
+      required:
+        - keys
+    DeviceKeyResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        key:
+          $ref: '#/components/schemas/DeviceKey'
+      required:
+        - key
+    DeviceKeySecret:
+      type: object
+      additionalProperties: false
+      properties:
+        key:
+          $ref: '#/components/schemas/DeviceKey'
+        secret:
+          type: string
+          pattern: ^wpk_[a-f0-9]{64}$
+          description: Returned once. Store in platform secure storage. Never log or embed in an app.
+      required:
+        - key
+        - secret
+    CreateKey:
+      type: object
+      additionalProperties: false
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Trimmed before saving; whitespace-only labels are rejected.
+      required:
+        - label
+    EmptyBody:
+      type: object
+      additionalProperties: false
+      properties: {}
+      required: []
+    Approval:
+      type: object
+      additionalProperties: false
+      properties:
+        userId:
+          type: string
+        approved:
+          type: boolean
+        implicit:
+          type: boolean
+        approvedAt:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+        revokedAt:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+      required:
+        - userId
+        - approved
+        - implicit
+        - approvedAt
+        - revokedAt
+    Approvals:
+      type: object
+      additionalProperties: false
+      properties:
+        approvals:
+          type: array
+          items:
+            $ref: '#/components/schemas/Approval'
+      required:
+        - approvals
+    ApprovalResult:
+      type: object
+      additionalProperties: false
+      properties:
+        userId:
+          type: string
+        approved:
+          type: boolean
+      required:
+        - userId
+        - approved
+    Revoked:
+      type: object
+      additionalProperties: false
+      properties:
+        revoked:
+          const: true
+      required:
+        - revoked
+  responses:
+    ApiError:
+      description: Request rejected or temporarily unavailable
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+        X-Content-Type-Options:
+          $ref: '#/components/headers/NoSniff'
+        X-Request-Id:
+          $ref: '#/components/headers/RequestId'
+        WWW-Authenticate:
+          $ref: '#/components/headers/Authenticate'
+        Retry-After:
+          $ref: '#/components/headers/RetryAfter'
+        Allow:
+          $ref: '#/components/headers/Allow'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  headers:
+    NoStore:
+      schema:
+        const: no-store
+      description: Responses must not be cached.
+    NoSniff:
+      schema:
+        const: nosniff
+    RequestId:
+      schema:
+        type: string
+        format: uuid
+    Authenticate:
+      schema:
+        type: string
+      description: Bearer or ApiKey challenge on 401 responses.
+    RetryAfter:
+      schema:
+        type: string
+      description: 60 on application rate-limit rejections (429).
+    Allow:
+      schema:
+        type: string
+      description: Allowed methods on 405 responses.

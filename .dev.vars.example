@@ -7,3 +7,9 @@ CLERK_WEBHOOK_SIGNING_SECRET=whsec_your_development_endpoint_secret
 # Disabled by default. Local EMAIL binding is simulated; do not use remote=true.
 EMAIL_ENABLED=false
 EMAIL_LAUNCH_AT=
+
+# Comma-separated trusted login origins for native bearer tokens with an azp claim.
+# Add the local login origin when testing browser-issued development tokens.
+CLERK_NATIVE_AUTHORIZED_PARTIES=https://weeklypools.ca,http://127.0.0.1:5173
+# Optional Clerk JWT public PEM key for networkless session verification (not a secret).
+# CLERK_JWT_KEY=your_clerk_public_pem_key
