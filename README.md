@@ -235,7 +235,7 @@ The September 28 release used commit `d96b78f` and Worker version `1caa2b26-c0ee
 
 See [AGENTS.md](AGENTS.md) for maintenance guidance.
 
-## Native API (local implementation; deployment required)
+## Native API
 
 The versioned native API is configured for **https://api.weeklypools.ca/v1**. Its canonical
 machine-readable contract is [`docs/api/openapi.yaml`](docs/api/openapi.yaml). Every change to
@@ -331,3 +331,27 @@ Local tests use real SQL migrations, signed test JWTs with real Clerk SDK verifi
 Clerk user lookup/feed access, and mock rate-limit bindings. They do not establish real native
 login compatibility, DNS/TLS, or production limiter behavior. For local native requests use
 `http://127.0.0.1:5173/v1/...`; website production and alternate Worker hosts do not expose v1.
+
+### Native API production deployment — September 30, 2026
+
+The native API is live at **https://api.weeklypools.ca/v1**. Application commit `8842c0e`
+was pushed to `main` and deployed as Worker version `d089245b-cb48-4ea7-873e-f71e681f0c67`.
+Migration `0013_native_api.sql` was applied to the existing production D1 database. Deployment
+used a clean export of the committed source and the existing production Clerk publishable key;
+unrelated local logo-concept deletions were excluded. Existing Clerk secrets, the admin account,
+D1 identity, retained domains, and the single cron were preserved. Email remains disabled with
+an empty launch timestamp. The rate-limit namespace IDs were unused before this deployment.
+
+Node 24 formatting, TypeScript, OpenAPI validation, all 109 regression tests, and the production
+build passed. Live verification confirmed API HTTPS, JSON `401` for missing credentials, `404`
+for unknown/static/legacy paths, `405` with Allow, secure headers and request IDs, and `429` with
+`Retry-After: 60`. Rate-limit verification used a persistent connection to one Cloudflare location;
+requests distributed between locations count against separate limits. The website's public
+APIs for all three leagues and combined season totals returned successfully. Desktop/mobile
+browser rendering and navigation passed without detected browser errors; the production Clerk
+sign-in dialog loaded successfully.
+
+Authenticated native provisioning, rotation, and pick saving with actual platform-issued Clerk
+sessions still need verification in the native clients. Production verification did not create
+keys, alter player entries, or enable email sending; signed test JWTs exercised the real Clerk SDK
+verification in the local regression suite.
