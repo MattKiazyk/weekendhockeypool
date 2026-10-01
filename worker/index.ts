@@ -1,4 +1,5 @@
 import { processEmails } from './email/delivery'
+import { syncExistingEmailAccounts } from './email/store'
 import { api } from './api'
 import { nativeApi } from './native/api'
 import { error } from './http'
@@ -33,6 +34,11 @@ export default {
           await scheduled(env)
         } catch (cause) {
           console.error('Scheduled sync failed', cause)
+        }
+        try {
+          await syncExistingEmailAccounts(env)
+        } catch {
+          console.error('Existing email account synchronization failed')
         }
         try {
           await processEmails(env)

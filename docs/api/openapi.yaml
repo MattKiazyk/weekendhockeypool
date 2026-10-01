@@ -1303,6 +1303,7 @@ components:
         - reminder
         - recap
     EmailPreferences:
+      description: All six switches initially default on. Saved opt-outs persist across sign-ins.
       type: object
       additionalProperties: false
       properties:

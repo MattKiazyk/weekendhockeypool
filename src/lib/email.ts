@@ -14,6 +14,13 @@ export function emptyEmailPreferences(): EmailPreferences {
     nfl: { reminder: false, recap: false },
   }
 }
+export function defaultEmailPreferences(): EmailPreferences {
+  return {
+    nhl: { reminder: true, recap: true },
+    pwhl: { reminder: true, recap: true },
+    nfl: { reminder: true, recap: true },
+  }
+}
 export function isEmailPreferences(value: unknown): value is EmailPreferences {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false
   const entries = Object.entries(value)

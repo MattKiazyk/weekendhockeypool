@@ -35,7 +35,7 @@ export default function EmailSettingsPage({
     <section className="email-settings content-wrap" aria-labelledby="email-settings-title">
       <span className="section-kicker">YOUR ACCOUNT</span>
       <h1 id="email-settings-title">EMAIL SETTINGS</h1>
-      <p>Choose your league reminders and recaps. All optional emails start off.</p>
+      <p>League reminders and recaps start on. Turn off any emails you don’t want and save.</p>
       {loading ? (
         <p role="status">Loading email settings…</p>
       ) : (

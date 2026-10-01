@@ -128,3 +128,49 @@ it('adds NFL week numbers after the hockey opening migration', () => {
     sqlite.close()
   }
 })
+
+it('enables existing email preferences once and initializes new accounts without overriding opt-outs', () => {
+  const sqlite = new DatabaseSync(':memory:')
+  try {
+    for (const file of readdirSync('migrations')
+      .filter((f) => f.endsWith('.sql') && f < '0014')
+      .sort()) {
+      sqlite.exec(readFileSync(`migrations/${file}`, 'utf8'))
+    }
+    sqlite.exec(`INSERT INTO email_accounts (clerk_id, created_at, source_updated_at)
+      VALUES ('existing', '2020-01-01T00:00:00.000Z', 0);
+      INSERT INTO email_accounts (clerk_id, created_at, source_updated_at, deleted_at)
+      VALUES ('deleted', '2020-01-01T00:00:00.000Z', 0, '2021-01-01T00:00:00.000Z');
+      INSERT INTO email_preferences (clerk_id, league, kind, enabled)
+      VALUES ('existing', 'nfl', 'reminder', 0);`)
+    sqlite.exec(readFileSync('migrations/0014_email_defaults_on.sql', 'utf8'))
+    expect(
+      sqlite
+        .prepare(
+          "SELECT COUNT(*) AS n FROM email_preferences WHERE clerk_id='existing' AND enabled=1 AND enabled_at IS NOT NULL",
+        )
+        .get()!.n,
+    ).toBe(6)
+    expect(
+      sqlite.prepare("SELECT COUNT(*) AS n FROM email_preferences WHERE clerk_id='deleted'").get()!
+        .n,
+    ).toBe(0)
+    sqlite.exec(`UPDATE email_preferences SET enabled=0, enabled_at=NULL WHERE clerk_id='existing';
+      UPDATE email_accounts SET username='updated' WHERE clerk_id='existing';
+      INSERT INTO email_accounts (clerk_id, created_at, source_updated_at)
+      VALUES ('new', '2099-01-01T00:00:00.000Z', 0);`)
+    expect(
+      sqlite
+        .prepare("SELECT SUM(enabled) AS n FROM email_preferences WHERE clerk_id='existing'")
+        .get()!.n,
+    ).toBe(0)
+    expect(
+      sqlite.prepare("SELECT SUM(enabled) AS n FROM email_preferences WHERE clerk_id='new'").get()!
+        .n,
+    ).toBe(6)
+    expect(sqlite.prepare('SELECT COUNT(*) AS n FROM email_jobs').get()!.n).toBe(0)
+    expect(sqlite.prepare('PRAGMA foreign_key_check').all()).toEqual([])
+  } finally {
+    sqlite.close()
+  }
+})

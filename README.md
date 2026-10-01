@@ -92,7 +92,11 @@ After UI changes, check desktop and mobile layouts, switch leagues, select and s
 ## Transactional email
 
 Email Settings (`#email-settings`) is available to signed-in users. Each account has separate NHL,
-PWHL, and NFL pick-reminder and recap switches; all six default off for both new and existing accounts.
+PWHL, and NFL pick-reminder and recap switches; all six default on for new accounts.
+Migration `0014_email_defaults_on.sql` enables all six
+once for existing accounts; subsequent saved opt-outs persist through sign-ins and webhook updates.
+The cron refreshes up to 25 older players missing email account state from Clerk per run, using
+verified primary addresses and actual creation dates. No welcome or recap history is backfilled.
 Only the verified primary Clerk address receives mail. Email addresses are private and never appear
 in entrant or standings responses. Preview settings use browser-local
 `hockey-pool-demo-email-settings-v1` storage and never call the email API or send mail.
@@ -185,6 +189,16 @@ accepted a controlled welcome example. Automated sending was enabled with
 controlled test account, receive no welcome backfill. The password-based signup verification
 screen was not exercised; the operator created the account through Clerk and testing used
 Clerk's test-account impersonation session. No production picks or standings were changed.
+
+### Email defaults update — October 1, 2026
+
+Migration `0014_email_defaults_on.sql` was applied remotely and Worker version
+`6847bc74-6f6d-4e10-a8c0-abf03d9f31b6` deployed. All six preferences start on for new accounts
+and were enabled once for existing tracked accounts. The scheduled Clerk account refresh covers
+older players without private email records. Later opt-outs remain saved. The original launch
+cutoff and four-reminder pause per league are preserved; no historical messages are backfilled.
+All 114 tests, API contract checks, formatting, typechecking, and builds passed. Fresh preview
+defaults and saved opt-outs were checked in the browser, including mobile layout.
 
 ### Free example-email verification — September 29, 2026
 

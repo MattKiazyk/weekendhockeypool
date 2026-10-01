@@ -1,4 +1,4 @@
-import { emptyEmailPreferences, isEmailPreferences } from './email'
+import { defaultEmailPreferences, isEmailPreferences } from './email'
 import schedule from '../demo-schedule.json'
 import nflSchedule from '../demo-nfl-schedule.json'
 import { emptyPool, type PoolData } from './api'
@@ -205,7 +205,7 @@ export function readDemoEmailSettings(): import('./email').EmailSettings {
   const settings: import('./email').EmailSettings = {
     email: 'rinkside@example.com',
     verified: true,
-    preferences: emptyEmailPreferences(),
+    preferences: defaultEmailPreferences(),
   }
   try {
     const saved: unknown = JSON.parse(localStorage.getItem(emailStorageKey) ?? 'null')

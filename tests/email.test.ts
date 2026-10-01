@@ -1,6 +1,10 @@
 import { createHmac } from 'node:crypto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { emptyEmailPreferences, isEmailPreferences } from '../src/lib/email'
+import {
+  defaultEmailPreferences,
+  emptyEmailPreferences,
+  isEmailPreferences,
+} from '../src/lib/email'
 import { addDays, easternTimeAt, weekendStartAt, type LeagueId } from '../src/lib/pool'
 import { api } from '../worker/api'
 import { auth } from '../worker/auth'
@@ -142,14 +146,34 @@ function webhook(type: string, id: string, user = account, eventAt = morning): R
 }
 
 describe('email accounts and settings', () => {
-  it('defaults all switches off and rejects malformed or extra input', async () => {
+  it('defaults all switches on and rejects malformed or extra input', async () => {
     await syncEmailAccount(env, account)
     expect((await readSettings(env.DB, account.userId)).preferences).toEqual(
-      emptyEmailPreferences(),
+      defaultEmailPreferences(),
     )
     expect(isEmailPreferences(emptyEmailPreferences())).toBe(true)
     expect(isEmailPreferences({ ...emptyEmailPreferences(), clerk_id: 'another-user' })).toBe(false)
     expect(isEmailPreferences({ nhl: { reminder: true, recap: 'yes' } })).toBe(false)
+  })
+  it('preserves saved opt-outs through subsequent account updates', async () => {
+    await syncEmailAccount(env, account)
+    await saveSettings(env.DB, account.userId, emptyEmailPreferences())
+    await syncEmailAccount(env, { ...account, updatedAt: account.updatedAt + 1000 })
+    expect((await readSettings(env.DB, account.userId)).preferences).toEqual(
+      emptyEmailPreferences(),
+    )
+    const deleted = { ...account, userId: 'deleted' }
+    await env.DB.prepare(
+      `INSERT INTO email_accounts
+      (clerk_id, created_at, source_updated_at, deleted_at) VALUES (?, ?, 0, ?)`,
+    )
+      .bind(deleted.userId, deleted.createdAt, deleted.createdAt)
+      .run()
+    expect(
+      database.sqlite
+        .prepare("SELECT COUNT(*) AS n FROM email_preferences WHERE clerk_id='deleted'")
+        .get()!.n,
+    ).toBe(0)
   })
   it('authenticates settings, saves only the caller, and keeps activation time on repeated saves', async () => {
     const request = (method: string, body?: unknown) =>
@@ -176,7 +200,7 @@ describe('email accounts and settings', () => {
     ).toBe(before)
     expect((await request('PUT', { ...preferences, clerk_id: 'user-2' })).status).toBe(400)
     expect((await request('GET')).status).toBe(200)
-    expect((await readSettings(env.DB, 'user-2')).preferences.nfl.recap).toBe(false)
+    expect((await readSettings(env.DB, 'user-2')).preferences).toEqual(defaultEmailPreferences())
     const me = await api(new Request('https://weeklypools.ca/api/me'), env)
     expect(await me.json()).not.toHaveProperty('email')
   })
@@ -436,6 +460,7 @@ describe('email schedules and standings snapshots', () => {
     const finalized = Date.parse(easternTimeAt(addDays(start, 3), 2))
     const late = { ...account, userId: 'late', email: 'late@example.com' }
     await syncEmailAccount(env, late)
+    await saveSettings(env.DB, late.userId, emptyEmailPreferences())
     await env.DB.prepare("UPDATE email_jobs SET status='sent' WHERE kind='welcome'").run()
     const preferences = emptyEmailPreferences()
     preferences.nhl.recap = true

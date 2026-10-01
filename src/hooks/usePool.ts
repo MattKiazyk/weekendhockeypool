@@ -1,4 +1,4 @@
-import { emptyEmailPreferences, type EmailSettings, type EmailPreferences } from '../lib/email'
+import { defaultEmailPreferences, type EmailSettings, type EmailPreferences } from '../lib/email'
 import { selectedStartFromUrl } from '../lib/views'
 import { useEffect, useRef, useState } from 'react'
 import { emptyPool, fetchJson, sendJson, type PoolData } from '../lib/api'
@@ -302,7 +302,7 @@ export function useEmailSettings(session: PoolSession, demo: boolean) {
   const [settings, setSettings] = useState<EmailSettings>(() =>
     demo
       ? readDemoEmailSettings()
-      : { email: null, verified: false, preferences: emptyEmailPreferences() },
+      : { email: null, verified: false, preferences: defaultEmailPreferences() },
   )
   const [loading, setLoading] = useState(!demo)
   const [saving, setSaving] = useState(false)

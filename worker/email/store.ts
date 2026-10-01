@@ -1,5 +1,5 @@
 import {
-  emptyEmailPreferences,
+  defaultEmailPreferences,
   type EmailSettings,
   type EmailPreferences,
 } from '../../src/lib/email'
@@ -7,6 +7,7 @@ import { leagues } from '../../src/lib/leagues'
 import { addDays, easternDate, easternTimeAt, type Weekend } from '../../src/lib/pool'
 import type { Env } from '../types'
 import { weekTitle, type RecapRow } from './templates'
+import { createClerkClient } from '@clerk/backend'
 
 export interface EmailAccount {
   userId: string
@@ -87,6 +88,37 @@ export function welcomeStatement(env: Env, userId: string, now = Date.now()): D1
 export async function syncEmailAccount(env: Env, account: EmailAccount): Promise<void> {
   await env.DB.batch([accountStatement(env.DB, account), welcomeStatement(env, account.userId)])
 }
+// Older players may predate email account tracking. Fetch real Clerk metadata;
+// never infer an address or account creation time from public player records.
+export async function syncExistingEmailAccounts(env: Env): Promise<void> {
+  if (!env.CLERK_SECRET_KEY || !env.CLERK_PUBLISHABLE_KEY) return
+  const missing = await env.DB.prepare(
+    `SELECT p.clerk_id FROM players p LEFT JOIN email_accounts a ON a.clerk_id=p.clerk_id
+      WHERE a.clerk_id IS NULL ORDER BY p.clerk_id LIMIT 25`,
+  ).all<{ clerk_id: string }>()
+  if (!missing.results.length) return
+  const client = createClerkClient({
+    secretKey: env.CLERK_SECRET_KEY,
+    publishableKey: env.CLERK_PUBLISHABLE_KEY,
+  })
+  for (const player of missing.results) {
+    try {
+      const user = await client.users.getUser(player.clerk_id)
+      await syncEmailAccount(env, accountFromClerk(user))
+    } catch (cause) {
+      if (cause && typeof cause === 'object' && 'status' in cause && cause.status === 404) {
+        await env.DB.prepare(
+          `INSERT OR IGNORE INTO email_accounts
+          (clerk_id, created_at, source_updated_at, deleted_at) VALUES (?, ?, 0, ?)`,
+        )
+          .bind(player.clerk_id, new Date().toISOString(), new Date().toISOString())
+          .run()
+      } else {
+        console.error('Existing email account synchronization failed')
+      }
+    }
+  }
+}
 export async function readSettings(db: D1Database, userId: string): Promise<EmailSettings> {
   const account = await db
     .prepare('SELECT email, verified FROM email_accounts WHERE clerk_id=? AND deleted_at IS NULL')
@@ -96,7 +128,7 @@ export async function readSettings(db: D1Database, userId: string): Promise<Emai
     .prepare('SELECT league, kind, enabled FROM email_preferences WHERE clerk_id=?')
     .bind(userId)
     .all<{ league: keyof EmailPreferences; kind: 'reminder' | 'recap'; enabled: number }>()
-  const preferences = emptyEmailPreferences()
+  const preferences = defaultEmailPreferences()
   for (const row of rows.results) preferences[row.league][row.kind] = !!row.enabled
   return { email: account?.email ?? null, verified: !!account?.verified, preferences }
 }
