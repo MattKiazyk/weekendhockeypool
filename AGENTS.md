@@ -5,6 +5,7 @@
 Weekly Pools is a React/Vite frontend with a Cloudflare Worker, D1, and Clerk. The canonical production URL is `https://weeklypools.ca`. Read `README.md` for setup, API behavior, and deployment details. No application router, state-management library, or ORM is needed for the current size of the project.
 
 - Keep `src/App.tsx` focused on composing pages and handling navigation/feedback. Put view-specific state in `src/components/` and data loading/saving in `src/hooks/usePool.ts`.
+- Keep Clerk sign-in return URLs and same-page reload handling in `src/lib/auth-navigation.ts`, wired through `src/main.tsx`. Completed sign-in/sign-up must return to the selected league, week, and view and refresh account data automatically.
 - Keep the Picks and Standings week buttons in `src/components/WeekendNav.tsx`. Hockey uses weekend dates; NFL uses official week numbers. Season shows the current season; Admin uses its own date input.
 - Keep the first-visit Picks guide and its browser-local dismissal in `src/components/PicksIntro.tsx`; keep it mounted across navigation so dismissal also works when storage is blocked.
 - Put domain types and pure rules in `src/lib/pool.ts`; both browser and Worker import it. Keep it free of React, browser APIs, and Cloudflare bindings.

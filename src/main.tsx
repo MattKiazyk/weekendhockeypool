@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { ClerkProvider, useAuth, useClerk, useUser } from '@clerk/react'
 import App from './App'
 import { fetchJson } from './lib/api'
+import { navigateAfterAuth, signInReturnUrls } from './lib/auth-navigation'
 import type { PoolSession } from './lib/session'
 import './style.css'
 
@@ -39,7 +40,7 @@ function ClerkApp() {
     username: user?.username ?? null,
     isAdmin,
     getToken,
-    signIn: () => clerk.openSignIn(),
+    signIn: () => clerk.openSignIn(signInReturnUrls(window.location.href)),
     signOut: () => {
       void clerk.signOut()
     },
@@ -70,7 +71,12 @@ function DemoApp() {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     {key ? (
-      <ClerkProvider publishableKey={key} afterSignOutUrl="/">
+      <ClerkProvider
+        publishableKey={key}
+        afterSignOutUrl="/"
+        routerPush={(to) => navigateAfterAuth(to)}
+        routerReplace={(to) => navigateAfterAuth(to, true)}
+      >
         <ClerkApp />
       </ClerkProvider>
     ) : demo ? (

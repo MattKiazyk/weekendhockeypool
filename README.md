@@ -31,6 +31,11 @@ cp .dev.vars.example .dev.vars
 
 Enable usernames in Clerk. Existing accounts without one can choose a username from the pick sheet. Local credential files are ignored by Git; only placeholder examples belong in source control. The secret key must never use a `VITE_` prefix. Production builds without a publishable key show a configuration error instead of enabling preview mode.
 
+Completing the sign-in modal (including its sign-up flow) returns to the current league, week,
+and view. Clerk navigation reloads an identical destination so the website automatically loads
+the active account and its saved picks. `src/lib/auth-navigation.ts` owns this return behavior;
+ordinary in-app navigation remains in `src/App.tsx`.
+
 ## Code layout
 
 | Path                                             | Responsibility                                                                 |
