@@ -1,8 +1,10 @@
 import { formatDay, formatDeadline } from '../../src/lib/format'
 import { leagueLabel } from '../../src/lib/leagues'
 import type { LeagueId, Weekend } from '../../src/lib/pool'
+import { viewUrl } from '../../src/lib/views'
 
 export const site = 'https://weeklypools.ca'
+const settingsUrl = viewUrl('email-settings', site)
 export interface RecapRow {
   clerkId: string
   username: string
@@ -33,14 +35,14 @@ export function weekTitle(
     : `${leagueLabel(week.league)} · Weekend of ${formatDay(week.startDate)}, ${week.startDate.slice(0, 4)}`
 }
 export function weekLink(league: LeagueId, start: string, view: 'picks' | 'standings'): string {
-  return `${site}/?league=${league}&start=${encodeURIComponent(start)}#${view}`
+  return viewUrl(view, `${site}/?league=${league}&start=${encodeURIComponent(start)}`)
 }
 function wrap(subject: string, body: string, text: string, welcome = false): EmailContent {
   const footer = `${welcome ? 'This is a one-time account welcome email. ' : ''}You can change league reminder and recap emails in Email Settings. Replies to this address are not monitored.`
   return {
     subject,
-    html: `<!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width, initial-scale=1"><meta charset="utf-8"><title>${escapeHtml(subject)}</title></head><body style="margin:0;background:#f2f4f6;color:#152438;font-family:Arial,sans-serif"><table role="presentation" style="width:100%;border-collapse:collapse"><tr><td style="padding:20px 12px"><table role="presentation" style="width:100%;max-width:600px;margin:auto;background:#fff;border-collapse:collapse"><tr><td style="padding:24px;background:#152438;color:#fff"><img src="${site}/logo-concepts/04-center-ice-roundel.png" width="48" height="48" alt="" style="vertical-align:middle;margin-right:12px"><strong>WEEKLY POOLS</strong></td></tr><tr><td style="padding:24px;line-height:1.6">${body}</td></tr><tr><td style="padding:24px;border-top:1px solid #dce2e8;font-size:12px;line-height:1.6;color:#526174">${escapeHtml(footer)} <a href="${site}/#email-settings" style="color:#1765a5">Email Settings</a><br>For fun only · Free to play · No betting, money, or prizes.</td></tr></table></td></tr></table></body></html>`,
-    text: `${text}\n\n${footer}\nEmail Settings: ${site}/#email-settings\nFor fun only. Free to play. No betting, money, or prizes.`,
+    html: `<!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width, initial-scale=1"><meta charset="utf-8"><title>${escapeHtml(subject)}</title></head><body style="margin:0;background:#f2f4f6;color:#152438;font-family:Arial,sans-serif"><table role="presentation" style="width:100%;border-collapse:collapse"><tr><td style="padding:20px 12px"><table role="presentation" style="width:100%;max-width:600px;margin:auto;background:#fff;border-collapse:collapse"><tr><td style="padding:24px;background:#152438;color:#fff"><img src="${site}/logo-concepts/04-center-ice-roundel.png" width="48" height="48" alt="" style="vertical-align:middle;margin-right:12px"><strong>WEEKLY POOLS</strong></td></tr><tr><td style="padding:24px;line-height:1.6">${body}</td></tr><tr><td style="padding:24px;border-top:1px solid #dce2e8;font-size:12px;line-height:1.6;color:#526174">${escapeHtml(footer)} <a href="${settingsUrl}" style="color:#1765a5">Email Settings</a><br>For fun only · Free to play · No betting, money, or prizes.</td></tr></table></td></tr></table></body></html>`,
+    text: `${text}\n\n${footer}\nEmail Settings: ${settingsUrl}\nFor fun only. Free to play. No betting, money, or prizes.`,
   }
 }
 function link(href: string, label: string): string {
@@ -59,8 +61,8 @@ export function welcomeEmail(username: string | null): EmailContent {
   ]
   return wrap(
     'Welcome to Weekly Pools!',
-    `<h1 style="font-size:26px">${escapeHtml(greeting)}</h1><p>${escapeHtml(copy)}</p><ol>${rules.map((rule) => `<li style="margin-bottom:12px">${escapeHtml(rule)}</li>`).join('')}</ol><p>Ready to make your calls? ${link(`${site}/#picks`, 'Visit My Picks')} or ${link(`${site}/#about`, 'read the playbook')}.</p><p>Want weekly reminders and recaps? They start off. Choose your leagues in ${link(`${site}/#email-settings`, 'Email Settings')}.</p>`,
-    `${greeting}\n\n${copy}\n\n${rules.map((rule, i) => `${i + 1}. ${rule}`).join('\n')}\n\nMy Picks: ${site}/#picks\nPlaybook: ${site}/#about\nOptional reminders and recaps start off.`,
+    `<h1 style="font-size:26px">${escapeHtml(greeting)}</h1><p>${escapeHtml(copy)}</p><ol>${rules.map((rule) => `<li style="margin-bottom:12px">${escapeHtml(rule)}</li>`).join('')}</ol><p>Ready to make your calls? ${link(viewUrl('picks', site), 'Visit My Picks')} or ${link(viewUrl('about', site), 'read the playbook')}.</p><p>Want weekly reminders and recaps? They start off. Choose your leagues in ${link(settingsUrl, 'Email Settings')}.</p>`,
+    `${greeting}\n\n${copy}\n\n${rules.map((rule, i) => `${i + 1}. ${rule}`).join('\n')}\n\nMy Picks: ${viewUrl('picks', site)}\nPlaybook: ${viewUrl('about', site)}\nOptional reminders and recaps start off.`,
     true,
   )
 }

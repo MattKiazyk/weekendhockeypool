@@ -36,6 +36,13 @@ and view. Clerk navigation reloads an identical destination so the website autom
 the active account and its saved picks. `src/lib/auth-navigation.ts` owns this return behavior;
 ordinary in-app navigation remains in `src/App.tsx`.
 
+My Picks uses `/`. Other pages use `/standings`, `/season`, `/about`, `/email-settings`,
+and `/admin`, with league and week selections preserved in `?league=...&start=...`.
+Navigation and email links share `viewUrl` in `src/lib/views.ts`. Old root hash links
+such as `/#standings` automatically become clean paths. Browser back/forward restores
+the selected page, league, and week; direct visits and reloads use the existing
+Cloudflare single-page application asset fallback.
+
 ## Code layout
 
 | Path                                             | Responsibility                                                                 |
@@ -96,7 +103,7 @@ After UI changes, check desktop and mobile layouts, switch leagues, select and s
 
 ## Transactional email
 
-Email Settings (`#email-settings`) is available to signed-in users. Each account has separate NHL,
+Email Settings (`/email-settings`) is available to signed-in users. Each account has separate NHL,
 PWHL, and NFL pick-reminder and recap switches; all six default on for new accounts.
 Migration `0014_email_defaults_on.sql` enables all six
 once for existing accounts; subsequent saved opt-outs persist through sign-ins and webhook updates.
@@ -234,6 +241,19 @@ The npm package is `weekend-pools`, but the following compatibility identifiers 
 The rebrand changes no API contracts, pool rules, data, or schema and requires no database migration. Browser storage belongs to each origin, so it does not transfer to the new hostname. The intro may reappear and users may need to sign in again; saved server entries remain attached to the same Clerk user IDs.
 
 Before an authorized deployment, run the checks, apply any new D1 migrations to the remote database, and build with `VITE_CLERK_PUBLISHABLE_KEY` set to the production publishable key. Deploy with `npx wrangler deploy`. `public/.assetsignore` excludes Finder metadata from published assets. Build output lives under `dist/client` and `dist/weekend_hockey_pool`; it is generated and should not be edited or committed. Keep previously applied migrations unchanged; add a new numbered migration for schema changes.
+
+### Clean page URLs deployment — October 5, 2026
+
+Worker version `5d5c637f-a70b-4833-866e-0fc91ef1f233` serves clean page URLs, with My Picks
+at `/` and other views at their named paths. Old hash links convert to clean paths while
+preserving league/week selections. The build uses the existing production Clerk publishable
+key. Deployment preserved all production bindings, email activation, domains, and the cron;
+no database migration was needed.
+
+Node 24 checks passed all 137 tests. Live direct-page visits, reloads, back/forward navigation,
+legacy hash links, desktop/mobile rendering, guest pick privacy, league APIs, combined season
+totals, and retained-domain redirects passed. Clerk's production sign-in modal loaded.
+Completed sign-in and authenticated account writes were not exercised during this deployment.
 
 ### Weekly Pools domain cutover — September 29, 2026
 

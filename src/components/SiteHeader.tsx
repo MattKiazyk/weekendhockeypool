@@ -1,5 +1,6 @@
 import type { PoolSession } from '../lib/session'
-import { views, type View } from '../lib/views'
+import { viewUrl, views, type View } from '../lib/views'
+import type { MouseEvent } from 'react'
 
 export default function SiteHeader({
   session,
@@ -10,17 +11,17 @@ export default function SiteHeader({
   view: View
   onNavigate: (view: View) => void
 }) {
+  function navigate(event: MouseEvent<HTMLAnchorElement>, next: View) {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+      return
+    event.preventDefault()
+    onNavigate(next)
+  }
+
   return (
     <header className="site-header">
       <div className="header-inner">
-        <a
-          href="#picks"
-          className="brand"
-          onClick={(event) => {
-            event.preventDefault()
-            onNavigate('picks')
-          }}
-        >
+        <a href={viewUrl('picks')} className="brand" onClick={(event) => navigate(event, 'picks')}>
           <img
             className="brand-mark"
             src="/logo-concepts/04-center-ice-roundel.png"
@@ -41,13 +42,15 @@ export default function SiteHeader({
                 (item.id !== 'email-settings' || session.signedIn),
             )
             .map((item) => (
-              <button
+              <a
                 key={item.id}
+                href={viewUrl(item.id)}
                 className={view === item.id ? 'active' : ''}
-                onClick={() => onNavigate(item.id)}
+                aria-current={view === item.id ? 'page' : undefined}
+                onClick={(event) => navigate(event, item.id)}
               >
                 {item.label}
-              </button>
+              </a>
             ))}
         </nav>
         <div className="account-area">

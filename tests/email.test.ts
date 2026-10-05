@@ -367,7 +367,9 @@ describe('email schedules and standings snapshots', () => {
     await processEmails(env, morning)
     await processEmails(env, morning + 15 * 60_000)
     expect(send).toHaveBeenCalledOnce()
-    expect(send.mock.calls[0][0].text).toContain(`league=nhl&start=${start}#picks`)
+    expect(send.mock.calls[0][0].text).toContain(
+      `https://weeklypools.ca/?league=nhl&start=${start}`,
+    )
     expect(count('reminder', 'sent')).toBe(1)
   })
   it('suppresses complete entries but reminds users with incomplete entries', async () => {
@@ -633,7 +635,13 @@ describe('safe email delivery and templates', () => {
     expect(recap.html).not.toContain('<script>')
     expect(recap.html).not.toContain('user-12')
     expect(recap.text).toContain('rank 13')
-    expect(recap.text).toContain('Email Settings: https://weeklypools.ca/#email-settings')
+    expect(recap.text).toContain(
+      `View full standings: https://weeklypools.ca/standings?league=nhl&start=${start}`,
+    )
+    expect(recap.text).toContain('Email Settings: https://weeklypools.ca/email-settings')
+    expect(welcomeEmail(null).html).toContain('href="https://weeklypools.ca/"')
+    expect(welcomeEmail(null).html).toContain('href="https://weeklypools.ca/about"')
+    expect(welcomeEmail(null).html).toContain('href="https://weeklypools.ca/email-settings"')
     expect(welcomeEmail(null).text).toContain('no betting, money, or prizes')
     expect(welcomeEmail(null).text).toContain('one-time account welcome')
     expect(

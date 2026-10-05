@@ -14,8 +14,17 @@ export const views = [
 
 export type View = (typeof views)[number]['id']
 
-export function viewFromHash(): View {
-  return views.find((view) => view.id === window.location.hash.slice(1))?.id ?? 'picks'
+export function viewFromUrl(location: Pick<Location, 'pathname' | 'hash'> = window.location): View {
+  const path = location.pathname.replace(/\/$/, '')
+  const id = path ? path.slice(1) : location.hash.slice(1)
+  return views.find((view) => view.id === id)?.id ?? 'picks'
+}
+
+export function viewUrl(view: View, href = window.location.href): string {
+  const url = new URL(href)
+  url.pathname = view === 'picks' ? '/' : `/${view}`
+  url.hash = ''
+  return url.href
 }
 
 export function selectedStartFromUrl(): string | null {

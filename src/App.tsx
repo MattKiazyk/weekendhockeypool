@@ -27,10 +27,10 @@ import {
   type Weekend,
 } from './lib/pool'
 import type { PoolSession } from './lib/session'
-import { selectedStartFromUrl, viewFromHash, views, type View } from './lib/views'
+import { selectedStartFromUrl, viewFromUrl, viewUrl, views, type View } from './lib/views'
 
 export default function App({ session, demo }: { session: PoolSession; demo: boolean }) {
-  const [view, setView] = useState<View>(viewFromHash)
+  const [view, setView] = useState<View>(viewFromUrl)
   const [league, setLeague] = useState<LeagueId>(() => {
     const selected = new URLSearchParams(window.location.search).get('league')
     return isLeague(selected) ? selected : 'nhl'
@@ -62,22 +62,28 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
   } = pool
 
   useEffect(() => {
-    const onHashChange = () => setView(viewFromHash())
-    const onPopState = () => {
+    const onLocationChange = () => {
+      const nextView = viewFromUrl()
+      setView(nextView)
       const selected = new URLSearchParams(window.location.search).get('league')
-      const nextLeague = isLeague(selected) ? selected : 'nhl'
-      if (nextLeague !== league) {
-        setLeague(nextLeague)
-      }
+      setLeague(isLeague(selected) ? selected : 'nhl')
       setSelectedWeek(selectedStartFromUrl())
+      // Keep bookmarked links and previously sent emails working with clean URLs.
+      if (
+        window.location.pathname === '/' &&
+        views.some((item) => `#${item.id}` === window.location.hash)
+      ) {
+        window.history.replaceState(null, '', viewUrl(nextView))
+      }
     }
-    window.addEventListener('hashchange', onHashChange)
-    window.addEventListener('popstate', onPopState)
+    onLocationChange()
+    window.addEventListener('hashchange', onLocationChange)
+    window.addEventListener('popstate', onLocationChange)
     return () => {
-      window.removeEventListener('hashchange', onHashChange)
-      window.removeEventListener('popstate', onPopState)
+      window.removeEventListener('hashchange', onLocationChange)
+      window.removeEventListener('popstate', onLocationChange)
     }
-  }, [league, setSelectedWeek])
+  }, [setSelectedWeek])
 
   useEffect(() => {
     if (!saveToastVisible) return
@@ -131,8 +137,9 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
   const heading = views.find((item) => item.id === view)!
 
   function navigateView(next: View) {
+    const url = viewUrl(next)
+    if (url !== window.location.href) window.history.pushState(null, '', url)
     setView(next)
-    window.location.hash = next
     window.scrollTo({ top: 0, behavior: 'auto' })
   }
 

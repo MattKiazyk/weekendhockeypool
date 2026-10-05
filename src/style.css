@@ -117,7 +117,9 @@ a {
   align-items: stretch;
   gap: 24px;
 }
-.main-nav button {
+.main-nav a {
+  display: flex;
+  align-items: center;
   background: none;
   border: 0;
   border-bottom: 3px solid transparent;
@@ -128,8 +130,8 @@ a {
   letter-spacing: 0.15em;
   padding: 3px 4px 0;
 }
-.main-nav button:hover,
-.main-nav button.active {
+.main-nav a:hover,
+.main-nav a.active {
   color: #fff;
   border-bottom-color: #3989fa;
 }
@@ -1212,7 +1214,7 @@ a {
     gap: 18px;
     overflow: auto;
   }
-  .main-nav button {
+  .main-nav a {
     font-size: 10px;
     padding: 0 1px;
     white-space: nowrap;

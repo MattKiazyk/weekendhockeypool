@@ -6,7 +6,7 @@ function mockLocation(href: string) {
 }
 
 describe('authentication navigation', () => {
-  const href = 'https://weeklypools.ca/?league=nfl&start=2026-10-01#standings'
+  const href = 'https://weeklypools.ca/standings?league=nfl&start=2026-10-01'
 
   it('returns both sign-in and sign-up to the selected league, week, and view', () => {
     expect(signInReturnUrls(href)).toEqual({
@@ -25,7 +25,7 @@ describe('authentication navigation', () => {
 
   it('also reloads a relative destination for the current page', () => {
     const location = mockLocation(href)
-    navigateAfterAuth('/?league=nfl&start=2026-10-01#standings', false, location)
+    navigateAfterAuth('/standings?league=nfl&start=2026-10-01', false, location)
     expect(location.reload).toHaveBeenCalledOnce()
   })
 
