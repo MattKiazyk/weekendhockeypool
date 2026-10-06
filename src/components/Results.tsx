@@ -14,6 +14,9 @@ interface WeekendResultsProps {
   displayStatus: WeekendStatus | 'upcoming'
   picksUnlocked: boolean
   signedIn: boolean
+  open: boolean
+  hasPicks: boolean
+  onMakePicks: () => void
   standings: Standing[]
   entrants: string[]
   publicPicks: PublicPick[]
@@ -24,6 +27,9 @@ export function WeekendResults({
   displayStatus,
   picksUnlocked,
   signedIn,
+  open,
+  hasPicks,
+  onMakePicks,
   standings,
   entrants,
   publicPicks,
@@ -31,6 +37,22 @@ export function WeekendResults({
   const games = week.games
   return (
     <div className="results-layout">
+      {open && !hasPicks && games.length > 0 && (
+        <section className="standings-prompt" aria-labelledby="standings-prompt-title">
+          <div>
+            <span className="card-kicker">THERE’S STILL TIME</span>
+            <h3 id="standings-prompt-title">GET ON THE BOARD.</h3>
+            <p>
+              {signedIn
+                ? 'You haven’t submitted picks for this week. Choose your winners, rank your confidence, and join the pool before the deadline.'
+                : 'Join this week’s pool. Sign in, choose your winners, and rank your confidence before the deadline.'}
+            </p>
+          </div>
+          <button type="button" onClick={onMakePicks}>
+            Make my picks <span aria-hidden="true">→</span>
+          </button>
+        </section>
+      )}
       <div className="results-main">
         <div className="results-intro">
           <span className="card-kicker">

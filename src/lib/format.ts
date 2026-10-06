@@ -1,4 +1,4 @@
-import { addDays } from './pool'
+import { addDays, easternDate } from './pool'
 
 const dateLabel = (value: string, options: Intl.DateTimeFormatOptions) =>
   new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', ...options }).format(
@@ -22,3 +22,20 @@ export const formatSlateDates = (start: string, end = addDays(start, 2)) => {
 
 export const formatDeadline = (iso: string) =>
   `${dateLabel(iso, { dateStyle: 'full', timeStyle: 'short' })} Eastern`
+
+export function formatSlateDeadline(iso: string, now = Date.now()): { date: string; time: string } {
+  const today = easternDate(now)
+  const weekday = new Date(dayIso(today)).getUTCDay()
+  const weekStart = addDays(today, -((weekday + 6) % 7))
+  const date = easternDate(iso)
+  const thisWeek = date >= weekStart && date < addDays(weekStart, 7)
+  const day = dateLabel(iso, {
+    weekday: 'long',
+    ...(!thisWeek && { month: 'short', day: 'numeric' }),
+    ...(!thisWeek && date.slice(0, 4) !== today.slice(0, 4) && { year: 'numeric' }),
+  })
+  const time = formatTime(iso)
+    .replace(':00 ', ' ')
+    .replace(/[AP]M/, (part) => part.toLowerCase())
+  return { date: day, time }
+}

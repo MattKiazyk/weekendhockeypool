@@ -957,6 +957,53 @@ a {
   grid-template-columns: minmax(0, 1fr) 306px;
   gap: 23px;
 }
+.standings-prompt {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 24px 28px;
+  border: 1px solid #796333;
+  border-radius: 5px;
+  background: linear-gradient(110deg, #29271e, #142033);
+}
+.standings-prompt .card-kicker {
+  color: #f5ca5b;
+}
+.standings-prompt h3 {
+  margin: 9px 0 8px;
+  font-family: 'Barlow Condensed', Impact, sans-serif;
+  font-size: 36px;
+  line-height: 1;
+}
+.standings-prompt p {
+  max-width: 680px;
+  margin: 0;
+  color: #b4c3d7;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.standings-prompt button {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-left: auto;
+  padding: 15px 20px;
+  border: 1px solid #f5ca5b;
+  border-radius: 3px;
+  background: #f5ca5b;
+  color: #131d2c;
+  font-size: 12px;
+  font-weight: 900;
+}
+.standings-prompt button:hover {
+  background: #ffdc7a;
+}
+.standings-prompt button:focus-visible {
+  outline: 2px solid #f5ca5b;
+  outline-offset: 4px;
+}
 .results-main,
 .results-aside {
   background: #101b2b;
@@ -1278,6 +1325,17 @@ a {
   .pick-layout,
   .results-layout {
     display: block;
+  }
+  .standings-prompt {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 17px;
+    margin-bottom: 18px;
+    padding: 22px 19px;
+  }
+  .standings-prompt button {
+    justify-content: space-between;
+    margin-left: 0;
   }
   .sidebar {
     position: static;
@@ -2465,7 +2523,7 @@ a {
   padding-right: 20px;
 }
 .slate-label,
-.slate-stat span {
+.slate-stat > span {
   display: block;
   color: #8ca7c9;
   font-size: 10px;
@@ -2494,12 +2552,23 @@ a {
   color: #f4f8ff;
   white-space: nowrap;
 }
-.slate-stat span {
+.slate-stat > span {
   margin-top: 8px;
 }
 .slate-deadline strong {
   font-size: 32px;
+  line-height: 1.08;
+  white-space: normal;
   color: #f5ca5b;
+}
+.slate-deadline-date {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 0.75em;
+}
+.slate-deadline-time {
+  font-size: 0.9em;
+  white-space: nowrap;
 }
 @media (max-width: 900px) {
   .slate-summary {
@@ -2555,7 +2624,7 @@ a {
   .slate-deadline strong {
     font-size: 27px;
   }
-  .slate-stat span {
+  .slate-stat > span {
     font-size: 9px;
     margin-top: 5px;
   }

@@ -5,7 +5,7 @@ import {
   type Weekend,
   type WeekendStatus,
 } from '../lib/pool'
-import { formatSlateDates, formatTime } from '../lib/format'
+import { formatDeadline, formatSlateDeadline, formatSlateDates, formatTime } from '../lib/format'
 
 export default function WeekHero({
   week,
@@ -23,6 +23,7 @@ export default function WeekHero({
   offseason?: boolean
 }) {
   const count = week?.games.length ?? 0
+  const deadline = week?.lockAt ? formatSlateDeadline(week.lockAt) : null
   const nfl = league === 'nfl'
   const gameDates = week?.games.map((game) => game.easternDate).sort() ?? []
   const title = seasonOnly
@@ -71,15 +72,20 @@ export default function WeekHero({
           {!seasonOnly && (!nfl || week) && (
             <div className="slate-stat slate-deadline">
               <strong>
-                {status === 'final'
-                  ? 'FINAL'
-                  : status === 'locked'
-                    ? 'LOCKED'
-                    : status === 'upcoming' && week
-                      ? formatTime(week.opensAt)
-                      : week?.lockAt
-                        ? formatTime(week.lockAt)
-                        : 'TBD'}
+                {status === 'final' ? (
+                  'FINAL'
+                ) : status === 'locked' ? (
+                  'LOCKED'
+                ) : status === 'upcoming' && week ? (
+                  formatTime(week.opensAt)
+                ) : week?.lockAt ? (
+                  <time dateTime={week.lockAt} title={formatDeadline(week.lockAt)}>
+                    <span className="slate-deadline-date">{deadline?.date}</span>{' '}
+                    <span className="slate-deadline-time">{deadline?.time}</span>
+                  </time>
+                ) : (
+                  'TBD'
+                )}
               </strong>
               <span>
                 {status === 'final'

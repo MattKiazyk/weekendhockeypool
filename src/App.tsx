@@ -388,6 +388,9 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
                       displayStatus={displayStatus}
                       picksUnlocked={picksUnlocked}
                       signedIn={session.signedIn}
+                      open={open}
+                      hasPicks={!!entry?.picks.length}
+                      onMakePicks={() => navigateView('picks')}
                       standings={standings}
                       entrants={entrants}
                       publicPicks={publicPicks}
