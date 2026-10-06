@@ -3152,6 +3152,11 @@ a {
     flex-basis: 30px;
   }
 }
+@media (max-width: 400px) {
+  .weekend-date.current-weekend span {
+    font-size: 12px;
+  }
+}
 
 .email-settings {
   max-width: 800px;

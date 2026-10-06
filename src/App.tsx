@@ -289,6 +289,7 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
                 <WeekendNav
                   weeks={weeks}
                   league={league}
+                  currentStart={currentWeekend}
                   activeStart={
                     selectedWeek ??
                     week?.startDate ??

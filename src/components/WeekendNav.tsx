@@ -5,6 +5,7 @@ interface WeekendNavProps {
   weeks: WeekListing[]
   league: LeagueId
   activeStart: string
+  currentStart: string
   onChange: (start: string) => void
 }
 
@@ -13,6 +14,7 @@ function DateButtons({
   league,
   weekNumbers,
   activeStart,
+  currentStart,
   count,
   onChange,
   className,
@@ -21,6 +23,7 @@ function DateButtons({
   league: LeagueId
   weekNumbers: Map<string, number | null>
   activeStart: string
+  currentStart: string
   count: number
   onChange: (start: string) => void
   className: string
@@ -43,25 +46,32 @@ function DateButtons({
         ‹
       </button>
       <div className="weekend-dates">
-        {visible.map((start) => (
-          <button
-            key={start}
-            type="button"
-            className={`weekend-date ${start === activeStart ? 'active' : ''}`}
-            aria-current={start === activeStart ? 'date' : undefined}
-            aria-label={
-              league === 'nfl'
-                ? `NFL ${start.slice(0, 4)} week ${weekNumbers.get(start)}`
-                : `Weekend of ${formatDay(start)}, ${start.slice(0, 4)}`
-            }
-            onClick={() => onChange(start)}
-          >
-            <span>
-              {league === 'nfl' ? `WEEK ${weekNumbers.get(start)}` : formatSlateDates(start)}
-            </span>
-            <small>{start.slice(0, 4)}</small>
-          </button>
-        ))}
+        {visible.map((start) => {
+          const thisWeekend = league !== 'nfl' && start === currentStart
+          return (
+            <button
+              key={start}
+              type="button"
+              className={`weekend-date ${start === activeStart ? 'active' : ''} ${thisWeekend ? 'current-weekend' : ''}`}
+              aria-current={start === activeStart ? 'date' : undefined}
+              aria-label={
+                league === 'nfl'
+                  ? `NFL ${start.slice(0, 4)} week ${weekNumbers.get(start)}`
+                  : `${thisWeekend ? 'This weekend,' : 'Weekend of'} ${formatDay(start)}, ${start.slice(0, 4)}`
+              }
+              onClick={() => onChange(start)}
+            >
+              <span>
+                {league === 'nfl'
+                  ? `WEEK ${weekNumbers.get(start)}`
+                  : thisWeekend
+                    ? 'THIS WEEKEND'
+                    : formatSlateDates(start)}
+              </span>
+              <small>{thisWeekend ? formatSlateDates(start) : start.slice(0, 4)}</small>
+            </button>
+          )
+        })}
       </div>
       <button
         type="button"
@@ -76,7 +86,13 @@ function DateButtons({
   )
 }
 
-export default function WeekendNav({ weeks, league, activeStart, onChange }: WeekendNavProps) {
+export default function WeekendNav({
+  weeks,
+  league,
+  activeStart,
+  currentStart,
+  onChange,
+}: WeekendNavProps) {
   const dates = [...new Set([...weeks.map((week) => week.start_date), activeStart])].sort()
   const weekNumbers = new Map(weeks.map((week) => [week.start_date, week.week_number]))
   if (dates.length < 2) return null
@@ -87,6 +103,7 @@ export default function WeekendNav({ weeks, league, activeStart, onChange }: Wee
         league={league}
         weekNumbers={weekNumbers}
         activeStart={activeStart}
+        currentStart={currentStart}
         count={5}
         onChange={onChange}
         className="wide"
@@ -96,6 +113,7 @@ export default function WeekendNav({ weeks, league, activeStart, onChange }: Wee
         league={league}
         weekNumbers={weekNumbers}
         activeStart={activeStart}
+        currentStart={currentStart}
         count={3}
         onChange={onChange}
         className="compact"
