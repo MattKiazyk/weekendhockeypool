@@ -37,11 +37,19 @@ the active account and its saved picks. `src/lib/auth-navigation.ts` owns this r
 ordinary in-app navigation remains in `src/App.tsx`.
 
 My Picks uses `/`. Other pages use `/standings`, `/season`, `/about`, `/email-settings`,
-and `/admin`, with league and week selections preserved in `?league=...&start=...`.
+`/admin`, `/policy`, and `/terms`, with league and week selections preserved in `?league=...&start=...`.
 Navigation and email links share `viewUrl` in `src/lib/views.ts`. Old root hash links
 such as `/#standings` automatically become clean paths. Browser back/forward restores
 the selected page, league, and week; direct visits and reloads use the existing
 Cloudflare single-page application asset fallback.
+
+Privacy Policy (`/policy`) and Terms of Service (`/terms`) are public pages linked from the footer.
+`src/components/LegalPage.tsx` owns their content, including the `matt@weeklypools.ca` contact address;
+`SiteFooter.tsx` owns footer links and attribution, and `ViewLink.tsx` shares in-app anchor behavior
+across the header, footer, and legal pages. Links preserve the selected league/week, work with
+browser back/forward, and support opening in a new tab. Keep legal copy and About’s privacy note
+consistent with account storage, public usernames/results, deadline-based pick visibility, and
+private email settings and delivery, and Google Analytics cookies and usage measurement.
 
 ## Code layout
 
@@ -51,6 +59,8 @@ Cloudflare single-page application asset fallback.
 | `src/App.tsx`                                    | Navigation, page composition, and action feedback                              |
 | `src/components/`                                | Pick sheet, matchup controls, standings, admin forms, and shared page elements |
 | `src/About.tsx`                                  | Public playbook and rules                                                      |
+| `src/components/LegalPage.tsx`                   | Public privacy policy and terms of service                                     |
+| `src/components/SiteFooter.tsx`, `ViewLink.tsx`  | Footer attribution/legal links and shared in-app anchors                       |
 | `src/hooks/usePool.ts`                           | Loading, cancellation, deadline refresh, entrants polling, and saving          |
 | `src/lib/pool.ts`                                | Shared types and pure pool rules used by both browser and Worker               |
 | `src/lib/leagues.ts`                             | Supported league IDs and display metadata                                      |

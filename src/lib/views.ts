@@ -10,6 +10,8 @@ export const views = [
   { id: 'about', label: 'About', kicker: '', title: '' },
   { id: 'email-settings', label: 'Email Settings', kicker: '', title: 'EMAIL SETTINGS' },
   { id: 'admin', label: 'Admin', kicker: '04 / CONTROL ROOM', title: 'ADMIN DESK' },
+  { id: 'policy', label: 'Privacy Policy', kicker: '', title: 'PRIVACY POLICY' },
+  { id: 'terms', label: 'Terms of Service', kicker: '', title: 'TERMS OF SERVICE' },
 ] as const
 
 export type View = (typeof views)[number]['id']

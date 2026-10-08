@@ -1,6 +1,6 @@
 import type { PoolSession } from '../lib/session'
-import { viewUrl, views, type View } from '../lib/views'
-import type { MouseEvent } from 'react'
+import { views, type View } from '../lib/views'
+import ViewLink from './ViewLink'
 
 export default function SiteHeader({
   session,
@@ -11,17 +11,10 @@ export default function SiteHeader({
   view: View
   onNavigate: (view: View) => void
 }) {
-  function navigate(event: MouseEvent<HTMLAnchorElement>, next: View) {
-    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
-      return
-    event.preventDefault()
-    onNavigate(next)
-  }
-
   return (
     <header className="site-header">
       <div className="header-inner">
-        <a href={viewUrl('picks')} className="brand" onClick={(event) => navigate(event, 'picks')}>
+        <ViewLink view="picks" className="brand" onNavigate={onNavigate}>
           <img
             className="brand-mark"
             src="/logo-concepts/04-center-ice-roundel.png"
@@ -33,24 +26,26 @@ export default function SiteHeader({
               WEEKLY <span className="brand-blue">POOLS</span>
             </b>
           </span>
-        </a>
+        </ViewLink>
         <nav className="main-nav" aria-label="Main navigation">
           {views
             .filter(
               (item) =>
+                item.id !== 'policy' &&
+                item.id !== 'terms' &&
                 (item.id !== 'admin' || session.isAdmin) &&
                 (item.id !== 'email-settings' || session.signedIn),
             )
             .map((item) => (
-              <a
+              <ViewLink
                 key={item.id}
-                href={viewUrl(item.id)}
+                view={item.id}
                 className={view === item.id ? 'active' : ''}
-                aria-current={view === item.id ? 'page' : undefined}
-                onClick={(event) => navigate(event, item.id)}
+                current={view === item.id}
+                onNavigate={onNavigate}
               >
                 {item.label}
-              </a>
+              </ViewLink>
             ))}
         </nav>
         <div className="account-area">

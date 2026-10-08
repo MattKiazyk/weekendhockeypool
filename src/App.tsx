@@ -3,11 +3,13 @@ import About from './About'
 import EmailSettingsPage from './components/EmailSettings'
 import AdminPanel from './components/AdminPanel'
 import LeagueTabs from './components/LeagueTabs'
+import LegalPage from './components/LegalPage'
 import PickSheet from './components/PickSheet'
 import PicksIntro from './components/PicksIntro'
 import { SeasonResults, WeekendResults } from './components/Results'
 import SaveToast, { type SaveFeedback } from './components/SaveToast'
 import SiteHeader from './components/SiteHeader'
+import SiteFooter from './components/SiteFooter'
 import WeekHero from './components/WeekHero'
 import WeekendNav from './components/WeekendNav'
 import { usePool } from './hooks/usePool'
@@ -255,7 +257,9 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
           league={league}
           onAbout={() => navigateView('about')}
         />
-        {view === 'email-settings' ? (
+        {view === 'policy' || view === 'terms' ? (
+          <LegalPage view={view} onNavigate={navigateView} />
+        ) : view === 'email-settings' ? (
           <EmailSettingsPage key={session.userId ?? 'guest'} session={session} demo={demo} />
         ) : view === 'about' ? (
           <About demo={demo} onPlay={() => navigateView('picks')} />
@@ -422,22 +426,7 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
           </>
         )}
       </main>
-      <footer className="site-footer">
-        <span>WEEKLY POOLS</span>
-        <span>WEEKLY CONFIDENCE POOLS</span>
-        <span>NHL, PWHL, and NFL schedules and scores · Eastern time</span>
-        <span className="footer-disclaimer">
-          For fun only · No real money involved · Not affiliated with or endorsed by the NHL, PWHL,
-          or NFL
-        </span>
-        <span className="footer-disclaimer">
-          PWHL statistics provided by the Professional Women’s Hockey League ·{' '}
-          <a href="http://leaguestat.com" target="_blank" rel="noreferrer">
-            Powered by HockeyTech.com
-          </a>
-        </span>
-        <span className="footer-disclaimer">NFL schedule and scores provided by ESPN.</span>
-      </footer>
+      <SiteFooter view={view} onNavigate={navigateView} />
       {saveToastVisible && saveFeedback && (
         <SaveToast feedback={saveFeedback} onDismiss={() => setSaveToastVisible(false)} />
       )}

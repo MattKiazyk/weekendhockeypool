@@ -174,7 +174,8 @@ function About({ demo, onPlay }: AboutProps) {
             <p>
               Clerk handles sign-in so only you can submit or edit your entry. The pool keeps your
               Clerk account ID, public username, picks, and submission times to run the standings.
-              It does not store your password or email address in the pool database.
+              It also keeps your primary email address, verification status, and preferences
+              privately for account and pool emails. Your password is handled by Clerk.
             </p>
             <p>
               Your username appears in the entries list as soon as you submit and later on results.
