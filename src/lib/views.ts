@@ -10,7 +10,7 @@ export const views = [
   { id: 'about', label: 'About', kicker: '', title: '' },
   { id: 'email-settings', label: 'Email Settings', kicker: '', title: 'EMAIL SETTINGS' },
   { id: 'admin', label: 'Admin', kicker: '04 / CONTROL ROOM', title: 'ADMIN DESK' },
-  { id: 'policy', label: 'Privacy Policy', kicker: '', title: 'PRIVACY POLICY' },
+  { id: 'privacy', label: 'Privacy Policy', kicker: '', title: 'PRIVACY POLICY' },
   { id: 'terms', label: 'Terms of Service', kicker: '', title: 'TERMS OF SERVICE' },
 ] as const
 
@@ -19,6 +19,7 @@ export type View = (typeof views)[number]['id']
 export function viewFromUrl(location: Pick<Location, 'pathname' | 'hash'> = window.location): View {
   const path = location.pathname.replace(/\/$/, '')
   const id = path ? path.slice(1) : location.hash.slice(1)
+  if (id === 'policy') return 'privacy'
   return views.find((view) => view.id === id)?.id ?? 'picks'
 }
 

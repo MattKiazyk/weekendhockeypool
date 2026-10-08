@@ -31,7 +31,7 @@ export default function SiteHeader({
           {views
             .filter(
               (item) =>
-                item.id !== 'policy' &&
+                item.id !== 'privacy' &&
                 item.id !== 'terms' &&
                 (item.id !== 'admin' || session.isAdmin) &&
                 (item.id !== 'email-settings' || session.signedIn),

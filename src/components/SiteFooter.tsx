@@ -14,7 +14,7 @@ export default function SiteFooter({
       <span>WEEKLY CONFIDENCE POOLS</span>
       <span>NHL, PWHL, and NFL schedules and scores · Eastern time</span>
       <nav className="footer-links" aria-label="Legal information">
-        <ViewLink view="policy" current={view === 'policy'} onNavigate={onNavigate}>
+        <ViewLink view="privacy" current={view === 'privacy'} onNavigate={onNavigate}>
           Privacy Policy
         </ViewLink>
         <ViewLink view="terms" current={view === 'terms'} onNavigate={onNavigate}>

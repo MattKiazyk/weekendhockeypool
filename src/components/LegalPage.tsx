@@ -2,7 +2,7 @@ import { views, type View } from '../lib/views'
 import ViewLink from './ViewLink'
 
 type LegalPageProps = {
-  view: 'policy' | 'terms'
+  view: 'privacy' | 'terms'
   onNavigate: (view: View) => void
 }
 
@@ -187,7 +187,7 @@ function TermsOfService({ onNavigate }: Pick<LegalPageProps, 'onNavigate'>) {
         <p>
           You allow us to store and display your username, entries, and results as needed to run the
           pools, standings, and recap emails. Our{' '}
-          <ViewLink view="policy" onNavigate={onNavigate}>
+          <ViewLink view="privacy" onNavigate={onNavigate}>
             Privacy Policy
           </ViewLink>{' '}
           explains visibility, email choices, and how we handle personal information. League names,
@@ -229,7 +229,7 @@ export default function LegalPage({ view, onNavigate }: LegalPageProps) {
           Last updated: <time dateTime="2026-10-08">October 8, 2026</time>
         </p>
       </header>
-      {view === 'policy' ? (
+      {view === 'privacy' ? (
         <PrivacyPolicy onNavigate={onNavigate} />
       ) : (
         <TermsOfService onNavigate={onNavigate} />

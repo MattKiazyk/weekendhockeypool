@@ -37,13 +37,14 @@ the active account and its saved picks. `src/lib/auth-navigation.ts` owns this r
 ordinary in-app navigation remains in `src/App.tsx`.
 
 My Picks uses `/`. Other pages use `/standings`, `/season`, `/about`, `/email-settings`,
-`/admin`, `/policy`, and `/terms`, with league and week selections preserved in `?league=...&start=...`.
+`/admin`, `/privacy`, and `/terms`, with league and week selections preserved in `?league=...&start=...`.
 Navigation and email links share `viewUrl` in `src/lib/views.ts`. Old root hash links
 such as `/#standings` automatically become clean paths. Browser back/forward restores
 the selected page, league, and week; direct visits and reloads use the existing
 Cloudflare single-page application asset fallback.
 
-Privacy Policy (`/policy`) and Terms of Service (`/terms`) are public pages linked from the footer.
+Privacy Policy (`/privacy`) and Terms of Service (`/terms`) are public pages linked from the footer.
+The previously published `/policy` and `/#policy` links normalize to `/privacy`, preserving queries.
 `src/components/LegalPage.tsx` owns their content, including the `matt@weeklypools.ca` contact address;
 `SiteFooter.tsx` owns footer links and attribution, and `ViewLink.tsx` shares in-app anchor behavior
 across the header, footer, and legal pages. Links preserve the selected league/week, work with

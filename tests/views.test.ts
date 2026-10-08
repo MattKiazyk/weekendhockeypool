@@ -28,6 +28,9 @@ describe('page URLs', () => {
 
   it('uses the page path ahead of a fragment and accepts a trailing slash', () => {
     expect(viewFromUrl(new URL('https://weeklypools.ca/about/#standings'))).toBe('about')
+    expect(viewFromUrl(new URL('https://weeklypools.ca/privacy/#standings'))).toBe('privacy')
+    expect(viewFromUrl(new URL('https://weeklypools.ca/policy/#standings'))).toBe('privacy')
+    expect(viewFromUrl(new URL('https://weeklypools.ca/#policy'))).toBe('privacy')
   })
 
   it.each(['/', '/unknown', '/#unknown'])('defaults %s to My Picks', (path) => {

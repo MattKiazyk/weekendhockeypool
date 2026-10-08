@@ -72,8 +72,10 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
       setSelectedWeek(selectedStartFromUrl())
       // Keep bookmarked links and previously sent emails working with clean URLs.
       if (
-        window.location.pathname === '/' &&
-        views.some((item) => `#${item.id}` === window.location.hash)
+        ['/policy', '/policy/'].includes(window.location.pathname) ||
+        (window.location.pathname === '/' &&
+          (window.location.hash === '#policy' ||
+            views.some((item) => `#${item.id}` === window.location.hash)))
       ) {
         window.history.replaceState(null, '', viewUrl(nextView))
       }
@@ -257,7 +259,7 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
           league={league}
           onAbout={() => navigateView('about')}
         />
-        {view === 'policy' || view === 'terms' ? (
+        {view === 'privacy' || view === 'terms' ? (
           <LegalPage view={view} onNavigate={navigateView} />
         ) : view === 'email-settings' ? (
           <EmailSettingsPage key={session.userId ?? 'guest'} session={session} demo={demo} />
