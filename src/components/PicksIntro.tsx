@@ -85,7 +85,10 @@ export default function PicksIntro({
               <h3>
                 <span>02</span> Rank each game
               </h3>
-              <p>Use 1 through the game count once each. Higher = more confident.</p>
+              <p>
+                Choose from 1 to the game count. You can only use each number once. Higher = more
+                confident.
+              </p>
             </div>
           </li>
           <li className="picks-intro-score">
