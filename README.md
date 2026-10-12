@@ -43,6 +43,19 @@ such as `/#standings` automatically become clean paths. Browser back/forward res
 the selected page, league, and week; direct visits and reloads use the existing
 Cloudflare single-page application asset fallback.
 
+`public/sitemap.xml` lists the six public canonical pages at `https://weeklypools.ca`:
+`/`, `/standings`, `/season`, `/about`, `/privacy`, and `/terms`. Vite copies it and
+`public/robots.txt` into the static assets, served by the existing Worker asset binding.
+The robots file advertises the sitemap and excludes API, admin, and email-settings paths
+from crawling. Keep query variants and legacy links out of the sitemap. React renders
+one canonical link for the selected view into the document head, without league/week queries.
+
+After deployment, verify `/sitemap.xml` returns XML and `/robots.txt` returns plain text,
+then submit `https://weeklypools.ca/sitemap.xml` in the **Sitemaps** report for the
+`weeklypools.ca` Google Search Console Domain property. Keep the existing DNS verification
+TXT record. The sitemap omits `lastmod` because these pages include changing pool data and
+there is no reliable page-level modification timestamp.
+
 Privacy Policy (`/privacy`) and Terms of Service (`/terms`) are public pages linked from the footer.
 The previously published `/policy` and `/#policy` links normalize to `/privacy`, preserving queries.
 `src/components/LegalPage.tsx` owns their content, including the `matt@weeklypools.ca` contact address;

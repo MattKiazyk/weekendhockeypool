@@ -218,6 +218,7 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
 
   return (
     <div className="site-shell">
+      <link rel="canonical" href={viewUrl(view, 'https://weeklypools.ca/')} />
       {demo && (
         <div className="demo-bar">
           <span>

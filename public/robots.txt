@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin
+Disallow: /email-settings
+
+Sitemap: https://weeklypools.ca/sitemap.xml
