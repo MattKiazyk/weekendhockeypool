@@ -76,7 +76,9 @@ export function WeekendResults({
               ? 'Every result is in. Tap a player’s row to see their confidence picks.'
               : picksUnlocked
                 ? 'Open a player’s entry to see their picks. Rankings arrive when every game is final or void.'
-                : 'Submitted usernames appear here right away. Picks stay hidden until the entry deadline passes, and rankings arrive after the final game.'}
+                : 'Submitted usernames appear here right away. Picks stay hidden until the entry deadline passes, and rankings arrive after the final game.'}{' '}
+            If your pick wins, you earn points equal to its confidence number. Incorrect picks and
+            void games earn zero.
           </p>
         </div>
         {displayStatus === 'final' && (

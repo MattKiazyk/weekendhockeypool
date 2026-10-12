@@ -101,7 +101,9 @@ export default function PicksIntro({
               <h3>
                 <span>03</span> Get the most points
               </h3>
-              <p>A correct pick on a game earns its points. A miss earns 0.</p>
+              <p>
+                If your pick wins, you earn points equal to its confidence number. A miss earns 0.
+              </p>
             </div>
           </li>
         </ol>

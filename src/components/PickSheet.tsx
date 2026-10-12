@@ -213,7 +213,9 @@ export default function PickSheet({
         <div className="rules-card">
           <span className="card-kicker">HOW SCORING WORKS</span>
           <p>
-            <b>{games.length}</b> on a winner? Earn <b>{games.length} points.</b>
+            If your pick wins, you earn points equal to its confidence number.
+            <br />
+            Choose <b>{games.length}</b> and pick the winner? Earn <b>{games.length} points.</b>
             <br />
             Miss the pick? Earn <b>0.</b>
           </p>

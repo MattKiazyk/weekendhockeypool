@@ -55,7 +55,7 @@ export function welcomeEmail(username: string | null): EmailContent {
   const rules = [
     'Choose a winner for every game in your league’s pick sheet.',
     'Assign a confidence number from 1 to the number of games to each game. You can only use each number once. Put your biggest number on the pick you feel best about.',
-    'A correct pick earns its confidence number in points. Void games earn zero.',
+    'If your pick wins, you earn points equal to its confidence number. Incorrect picks and void games earn zero.',
     'Save your complete entry before the first game starts. That first-game deadline locks all picks for the week.',
     'NHL and PWHL pools cover Friday–Sunday games and open Monday at 8 a.m. Eastern. NFL pools follow official regular-season weeks and open Tuesday at 8 a.m. Eastern. Each league has its own entry and standings.',
   ]
@@ -69,7 +69,7 @@ export function welcomeEmail(username: string | null): EmailContent {
 export function reminderEmail(week: Weekend): EmailContent {
   const title = weekTitle(week)
   const deadline = formatDeadline(week.lockAt!)
-  const copy = `There’s still time to make your calls. Your ${leagueLabel(week.league)} entry needs a winner and confidence number for every game. You can only use each number once.`
+  const copy = `There’s still time to make your calls. Your ${leagueLabel(week.league)} entry needs a winner and confidence number for every game. You can only use each number once. If your pick wins, you earn points equal to its confidence number.`
   const href = weekLink(week.league, week.startDate, 'picks')
   return wrap(
     `${title}: make your picks`,

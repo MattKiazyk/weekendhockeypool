@@ -162,9 +162,9 @@ export default function Matchup({
             ))}
           </div>
           <p>
-            {selectedConfidence
-              ? 'Choosing a number on another game swaps the two.'
-              : 'Higher numbers are worth more when your pick wins.'}
+            If your pick wins, you earn points equal to its confidence number. You can only use each
+            number once.
+            {selectedConfidence > 0 && ' Choosing a number on another game swaps the two.'}
           </p>
         </div>
       )}

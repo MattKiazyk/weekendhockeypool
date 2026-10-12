@@ -19,7 +19,7 @@ const steps = [
   {
     number: '03',
     title: 'Watch the results',
-    text: 'A correct pick earns its confidence number. A miss earns zero. Standings rank players by points, not just correct picks. After the deadline, tap a player’s row to see their picks and game scores. Each league has its own standings, and the combined season table adds points from whichever leagues you enter.',
+    text: 'If your pick wins, you earn points equal to its confidence number. A miss earns zero. Standings rank players by points, not just correct picks. After the deadline, tap a player’s row to see their picks and game scores. Each league has its own standings, and the combined season table adds points from whichever leagues you enter.',
   },
 ]
 
@@ -91,8 +91,8 @@ function About({ demo, onPlay }: AboutProps) {
             <span className="section-kicker">02 / THE POINTS</span>
             <h2 id="about-example-title">YOUR NUMBER IS YOUR SCORE.</h2>
             <p>
-              Put 18 on a game and pick the winner? You earn 18 points. If that team loses, you earn
-              zero for that game.
+              Your confidence number is how many points you earn if your pick wins. Choose 18 and
+              pick the winner? You earn 18 points. If that team loses, you earn zero for that game.
             </p>
           </div>
           <div className="about-point-examples">

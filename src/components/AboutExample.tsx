@@ -77,8 +77,8 @@ export default function AboutExample({ step }: { step: string }) {
         <>
           <StandingsList rows={standings} emptyText="" games={finalGames} picks={publicPicks} />
           <p className="about-demo-hint">
-            Both players got one winner right. The higher confidence pick earned more points. Tap a
-            player to see their picks and scores.
+            Both players picked the Rangers to win. Confidence 2 earned blue_line 2 points;
+            confidence 1 earned hat_trick 1 point. Tap a player to see their picks and scores.
           </p>
         </>
       ) : (
