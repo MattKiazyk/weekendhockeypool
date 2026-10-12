@@ -217,7 +217,7 @@ export default function PickSheet({
             <br />
             Miss the pick? Earn <b>0.</b>
           </p>
-          <small>Each number can be used once. Highest weekly total takes the top spot.</small>
+          <small>You can only use each number once. Highest weekly total takes the top spot.</small>
         </div>
       </aside>
     </div>

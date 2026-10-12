@@ -97,7 +97,7 @@ export default function AboutExample({ step }: { step: string }) {
           <p className="about-demo-hint">
             {step === '01'
               ? 'Tap either team to choose your winner, then choose a confidence number.'
-              : 'Tap a points number, then choose the number used on the other game to swap them. Each number can only be used once.'}
+              : 'Tap a points number, then choose the number used on the other game to swap them. You can only use each number once.'}
           </p>
         </>
       )}

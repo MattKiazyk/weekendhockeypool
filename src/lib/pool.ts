@@ -199,7 +199,9 @@ export function validatePicks(picks: Pick[], games: Game[]): string[] {
     new Set(values).size !== games.length ||
     values.some((value) => !Number.isInteger(value) || value < 1 || value > games.length)
   ) {
-    errors.push(`Use each confidence number from 1 to ${games.length} once.`)
+    errors.push(
+      `Choose confidence numbers from 1 to ${games.length}. You can only use each number once.`,
+    )
   }
   return errors
 }

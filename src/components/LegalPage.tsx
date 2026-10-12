@@ -160,9 +160,9 @@ function TermsOfService({ onNavigate }: Pick<LegalPageProps, 'onNavigate'>) {
             About
           </ViewLink>{' '}
           apply to participation. You may submit one entry per league per pool week. A complete
-          entry selects a winner for every game and uses each confidence number from 1 to the number
-          of games exactly once. Changes must be saved before the displayed deadline. Unsaved or
-          incomplete picks do not count as a valid entry.
+          entry selects a winner and assigns a confidence number from 1 to the number of games to
+          every game. You can only use each number once. Changes must be saved before the displayed
+          deadline. Unsaved or incomplete picks do not count as a valid entry.
         </p>
         <p>
           Schedules and scores depend on external feeds. Games may be voided under the pool rules,
