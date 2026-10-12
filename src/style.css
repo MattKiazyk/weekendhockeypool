@@ -2168,22 +2168,47 @@ a {
 }
 .about-steps {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 17px;
 }
 .about-step {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  align-items: center;
   overflow: hidden;
   border: 1px solid #314762;
   border-radius: 5px;
   background: #111e30;
 }
-.about-step img {
+.about-demo {
+  min-width: 0;
+  padding: 22px;
+  border-right: 1px solid #344c6a;
+  background: #0d1726;
+}
+.about-demo-label {
   display: block;
-  width: 100%;
-  aspect-ratio: 16/9;
-  object-fit: cover;
-  border-bottom: 1px solid #344c6a;
-  background: #101d30;
+  margin-bottom: 14px;
+  color: #68aaff;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+.about-demo .standing-head,
+.about-demo .standing-row {
+  grid-template-columns: minmax(0, 1fr) 60px 55px;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+.about-demo .standing-row > div {
+  gap: 10px;
+}
+.about-demo .standing-row strong {
+  overflow-wrap: anywhere;
+}
+.about-demo .about-demo-hint {
+  margin-top: 14px;
+  font-size: 11px;
 }
 .about-step-copy {
   padding: 22px 22px 25px;
@@ -2434,8 +2459,13 @@ a {
     grid-template-columns: 1fr;
     gap: 14px;
   }
-  .about-step img {
-    aspect-ratio: 16/8;
+  .about-step {
+    grid-template-columns: 1fr;
+  }
+  .about-demo {
+    padding: 16px;
+    border-right: 0;
+    border-bottom: 1px solid #344c6a;
   }
   .about-step-copy {
     padding: 19px;

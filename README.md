@@ -79,6 +79,9 @@ private email settings and delivery, and Google Analytics cookies and usage meas
 | `migrations/`                                    | D1 schema and deadline triggers, applied in order                              |
 | `tests/`                                         | Rules and Worker regression tests using the actual SQL migrations              |
 
+About’s interactive examples live in `src/components/AboutExample.tsx`. They use the real
+matchup and standings components with labeled sample data and local state, without saving entries.
+
 ## Rules and data flow
 
 - First-time visitors see a compact how-to at the top of Picks. Choosing **Got it** hides it on future visits in that browser using the `hockey-pool-intro-dismissed` localStorage key; clear that key to show it again. If storage is blocked, dismissal lasts for the current page session. The full rules remain available in About.

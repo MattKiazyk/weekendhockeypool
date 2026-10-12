@@ -1,3 +1,5 @@
+import AboutExample from './components/AboutExample'
+
 type AboutProps = {
   demo: boolean
   onPlay: () => void
@@ -7,23 +9,17 @@ const steps = [
   {
     number: '01',
     title: 'Pick one winner',
-    image: '/about-pick.svg',
-    alt: 'Illustration of an away team selected over a home team',
     text: 'Choose NHL, PWHL, or NFL. Hockey sheets cover Friday through Sunday; NFL sheets follow the official regular-season week. Pick a winner for every game.',
   },
   {
     number: '02',
     title: 'Rank your confidence',
-    image: '/about-rank.svg',
-    alt: 'Illustration of unique confidence numbers with 18 highlighted',
-    text: 'If there are 18 games, use each number from 18 down to 1 exactly once. Put the biggest number on the winner you feel best about.',
+    text: 'If there are 18 games, assign a confidence number from 1 to 18 to each game. You can only use each number once. Put the biggest number on the winner you feel best about.',
   },
   {
     number: '03',
-    title: 'Watch the board',
-    image: '/about-score.svg',
-    alt: 'Illustration of a correct pick earning points on a leaderboard',
-    text: 'A correct pick earns its confidence number. A miss earns zero. Each league has its own standings, and the combined season table adds points from whichever leagues you enter.',
+    title: 'Watch the results',
+    text: 'A correct pick earns its confidence number. A miss earns zero. Standings rank players by points, not just correct picks. After the deadline, tap a player’s row to see their picks and game scores. Each league has its own standings, and the combined season table adds points from whichever leagues you enter.',
   },
 ]
 
@@ -79,7 +75,7 @@ function About({ demo, onPlay }: AboutProps) {
           <div className="about-steps">
             {steps.map((step) => (
               <article className="about-step" key={step.number}>
-                <img src={step.image} alt={step.alt} loading="lazy" />
+                <AboutExample step={step.number} />
                 <div className="about-step-copy">
                   <span>{step.number} / STEP</span>
                   <h3>{step.title}</h3>
