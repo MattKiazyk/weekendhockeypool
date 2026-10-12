@@ -82,3 +82,11 @@ Update this file and the README whenever module ownership, setup, commands, or p
 - Keep common NFL/CFL presentation rules in the small helpers in `src/lib/leagues.ts`. Preview CFL
   fixtures live in `src/demo-cfl-schedule.json` and use `hockey-pool-demo-entry-cfl`; they never send
   mail or write to the API. Verify provider terms and deployed Worker feed access before rollout.
+
+Admin’s private participation table lives in `src/components/AdminUsers.tsx`, with loading in
+`useAdminUsers` in `src/hooks/usePool.ts` and the website-only `GET /api/admin/users` query in
+`worker/admin.ts`. Authorization stays in `worker/api.ts`. It lists locally stored active accounts
+and legacy players, excludes deleted accounts, and exposes no emails or picks. NHL/PWHL/NFL/CFL
+columns each default to the latest released persisted pool and support independent past/upcoming
+week selection. Submitted means a complete valid entry; schedule-invalidated entries show
+Incomplete, missing entries show Not entered, and leagues without a released pool show No pool.

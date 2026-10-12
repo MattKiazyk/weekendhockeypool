@@ -39,6 +39,47 @@ info:
 servers:
   - url: https://api.weeklypools.ca/v1
 paths:
+  /api/admin/users:
+    servers:
+      - url: https://weeklypools.ca
+    get:
+      summary: Website administrator weekly participation overview
+      operationId: get_website_admin_users
+      description: >-
+        Website-only route. Requires the configured admin Clerk session, without a native device key.
+        Lists locally stored accounts (active email accounts and legacy players), excluding deleted
+        accounts. Returns usernames and entry status, never email addresses or pick selections.
+        Each league defaults to its latest persisted pool with games whose opening has passed.
+        Optional league query parameters select a persisted week, including upcoming weeks.
+      security:
+        - ClerkSession: []
+      parameters:
+        - { name: nhl, in: query, schema: { type: string, format: date } }
+        - { name: pwhl, in: query, schema: { type: string, format: date } }
+        - { name: nfl, in: query, schema: { type: string, format: date } }
+        - { name: cfl, in: query, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: Private weekly participation table
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUsers'
+        '400':
+          description: Invalid league week date
+          content:
+            application/json:
+              schema: { type: object, required: [error], properties: { error: { type: string } } }
+        '403':
+          description: Admin access required
+          content:
+            application/json:
+              schema: { type: object, required: [error], properties: { error: { type: string } } }
+        '404':
+          description: Selected pool week not found
+          content:
+            application/json:
+              schema: { type: object, required: [error], properties: { error: { type: string } } }
   /leagues:
     get:
       summary: Supported leagues and display metadata
@@ -813,6 +854,52 @@ components:
       scheme: bearer
       bearerFormat: Clerk session JWT
   schemas:
+    AdminUsers:
+      type: object
+      additionalProperties: false
+      required: [columns, users]
+      properties:
+        columns:
+          type: array
+          minItems: 4
+          maxItems: 4
+          items:
+            type: object
+            additionalProperties: false
+            required: [league, selectedStart, weeks]
+            properties:
+              league: { type: string, enum: [nhl, pwhl, nfl, cfl] }
+              selectedStart: { type: [string, 'null'], format: date }
+              weeks:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: false
+                  required: [startDate, weekNumber]
+                  properties:
+                    startDate: { type: string, format: date }
+                    weekNumber: { type: [integer, 'null'] }
+        users:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [userId, username, entries]
+            properties:
+              userId: { type: string }
+              username: { type: [string, 'null'] }
+              entries:
+                type: object
+                additionalProperties: false
+                required: [nhl, pwhl, nfl, cfl]
+                properties:
+                  nhl: { $ref: '#/components/schemas/AdminEntryStatus' }
+                  pwhl: { $ref: '#/components/schemas/AdminEntryStatus' }
+                  nfl: { $ref: '#/components/schemas/AdminEntryStatus' }
+                  cfl: { $ref: '#/components/schemas/AdminEntryStatus' }
+    AdminEntryStatus:
+      type: string
+      enum: [submitted, incomplete, not-entered, no-pool]
     Error:
       type: object
       additionalProperties: false

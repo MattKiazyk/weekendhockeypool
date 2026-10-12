@@ -1,3 +1,7 @@
+import { readFileSync } from 'node:fs'
+import YAML from 'yaml'
+import Ajv2020 from 'ajv/dist/2020'
+import addFormats from 'ajv-formats'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { addDays, type Game, type Pick, weekendStartAt } from '../src/lib/pool'
 import { api } from '../worker/api'
@@ -496,5 +500,103 @@ describe('multiple leagues', () => {
     expect((await getWeek(database.db, 'nhl', start))?.games).toHaveLength(2)
     expect((await request('weeks?league=other')).status).toBe(400)
     expect((await request('season?league=other&season=2099-00')).status).toBe(400)
+  })
+})
+
+describe('private admin participation', () => {
+  it('requires the configured admin even for reads and invalid queries', async () => {
+    vi.mocked(auth).mockResolvedValue(null)
+    expect((await request('admin/users')).status).toBe(403)
+    vi.mocked(auth).mockResolvedValue({ userId: 'visitor', username: 'visitor' })
+    expect((await request('admin/users?nhl=invalid')).status).toBe(403)
+    vi.mocked(auth).mockResolvedValue(user)
+    expect((await request('admin/users?nhl=invalid')).status).toBe(400)
+    expect((await request(`admin/users?nhl=${addDays(start, 7)}`)).status).toBe(404)
+    expect((await request('admin/sync')).status).toBe(404)
+  })
+
+  it('lists non-entrants, excludes deleted accounts, scopes weeks and validates full entries', async () => {
+    const footballStart = addDays(start, -1)
+    for (const league of ['nfl', 'cfl'] as const) {
+      await database.db
+        .prepare(
+          'INSERT INTO weekends (league, start_date, season, week_number, opens_at) VALUES (?, ?, ?, ?, ?)',
+        )
+        .bind(league, footballStart, '2099-00', 4, alreadyOpen)
+        .run()
+      await database.db.batch([
+        upsertGame(database.db, league, footballStart, games[0], 'feed'),
+        updateLockTime(database.db, league, footballStart),
+      ])
+    }
+    await saveEntry(database.db, 'nhl', start, user.userId, picks)
+    const nflGame = (await getWeek(database.db, 'nfl', footballStart))!.games[0]
+    await saveEntry(database.db, 'nfl', footballStart, user.userId, [
+      { gameId: nflGame.id, side: 'away', confidence: 1 },
+    ])
+    // A pre-lock slate change leaves an existing NFL entry incomplete.
+    await upsertGame(database.db, 'nfl', footballStart, games[1], 'feed').run()
+    await savePlayer(database.db, { userId: 'no-entry', username: 'no_entry' })
+    await savePlayer(database.db, { userId: 'deleted', username: 'deleted' })
+    database.sqlite.exec(`
+      INSERT INTO email_accounts (clerk_id, email, username, created_at, source_updated_at)
+      VALUES ('new-account', 'private@example.com', 'new_account', '2026-10-01', 1),
+             ('player-1', 'another-private@example.com', 'fresh_username', '2026-10-01', 1);
+      INSERT INTO email_accounts (clerk_id, created_at, source_updated_at, deleted_at)
+      VALUES ('deleted', '2026-10-01', 1, '2026-10-02');
+    `)
+    const response = await request('admin/users')
+    expect(response.status).toBe(200)
+    expect(response.headers.get('cache-control')).toBe('no-store')
+    const body = (await response.json()) as import('../src/lib/api').AdminUsersData
+    expect(body.columns.map((column) => [column.league, column.selectedStart])).toEqual([
+      ['nhl', start],
+      ['pwhl', null],
+      ['nfl', footballStart],
+      ['cfl', footballStart],
+    ])
+    expect(body.users.find((account) => account.userId === user.userId)).toEqual({
+      userId: user.userId,
+      username: 'fresh_username',
+      entries: { nhl: 'submitted', pwhl: 'no-pool', nfl: 'incomplete', cfl: 'not-entered' },
+    })
+    expect(body.users.map((account) => account.userId).sort()).toEqual(
+      ['new-account', 'no-entry', user.userId].sort(),
+    )
+    expect(JSON.stringify(body)).not.toContain('private@example.com')
+    expect(JSON.stringify(body)).not.toContain('confidence')
+    const contract = YAML.parse(readFileSync('docs/api/openapi.yaml', 'utf8'))
+    const ajv = new Ajv2020({ strict: false })
+    addFormats(ajv)
+    ajv.addSchema(contract, 'contract')
+    const validate = ajv.getSchema('contract#/components/schemas/AdminUsers')!
+    expect(validate(body), JSON.stringify(validate.errors)).toBe(true)
+
+    const next = addDays(start, 7)
+    await database.db
+      .prepare('INSERT INTO weekends (league, start_date, season, opens_at) VALUES (?, ?, ?, ?)')
+      .bind('nhl', next, '2099-00', `${next}T12:00:00Z`)
+      .run()
+    await upsertGame(
+      database.db,
+      'nhl',
+      next,
+      { ...games[0], id: 99, sourceId: 99, startUtc: `${next}T23:00:00Z`, easternDate: next },
+      'feed',
+    ).run()
+    const defaultBody = (await (
+      await request('admin/users')
+    ).json()) as import('../src/lib/api').AdminUsersData
+    expect(defaultBody.columns[0].selectedStart).toBe(start)
+    const selected = (await (
+      await request(`admin/users?nhl=${next}`)
+    ).json()) as import('../src/lib/api').AdminUsersData
+    expect(selected.columns[0].selectedStart).toBe(next)
+    expect(selected.users.find((account) => account.userId === user.userId)!.entries.nhl).toBe(
+      'not-entered',
+    )
+    expect(selected.users.find((account) => account.userId === user.userId)!.entries.nfl).toBe(
+      'incomplete',
+    )
   })
 })

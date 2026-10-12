@@ -1,4 +1,12 @@
-import type { CombinedStanding, Entry, PublicPick, Standing, Weekend, WeekListing } from './pool'
+import type {
+  CombinedStanding,
+  Entry,
+  LeagueId,
+  PublicPick,
+  Standing,
+  Weekend,
+  WeekListing,
+} from './pool'
 
 export interface PoolData {
   week: Weekend | null
@@ -50,4 +58,18 @@ export function sendJson<T>(
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
   })
+}
+
+export type AdminEntryStatus = 'submitted' | 'incomplete' | 'not-entered' | 'no-pool'
+export interface AdminUsersData {
+  columns: {
+    league: LeagueId
+    selectedStart: string | null
+    weeks: { startDate: string; weekNumber: number | null }[]
+  }[]
+  users: {
+    userId: string
+    username: string | null
+    entries: Record<LeagueId, AdminEntryStatus>
+  }[]
 }

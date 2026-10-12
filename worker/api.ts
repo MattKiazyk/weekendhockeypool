@@ -16,7 +16,7 @@ import {
 } from '../src/lib/pool'
 import { isLeague, leagues } from '../src/lib/leagues'
 import { auth } from './auth'
-import { admin } from './admin'
+import { admin, adminUsers } from './admin'
 import { getWeek, getEntry, saveEntry, savePlayer } from './db'
 import { syncSchedule } from './sync'
 import { nflWeekContext } from './nfl'
@@ -291,10 +291,12 @@ export async function api(request: Request, env: Env, verifiedUser?: Player): Pr
       .all()
     return json({ picks: rows.results })
   }
-  if (path.startsWith('/api/admin/') && request.method === 'POST') {
+  if (path.startsWith('/api/admin/') && (request.method === 'POST' || request.method === 'GET')) {
     const user = verifiedUser ?? (await auth(request, env))
     if (!user || !env.ADMIN_CLERK_USER_ID || user.userId !== env.ADMIN_CLERK_USER_ID)
       return error('Admin access required', 403)
+    if (path === '/api/admin/users' && request.method === 'GET') return adminUsers(request, env)
+    if (request.method !== 'POST') return error('Not found', 404)
     return admin(request, env, path)
   }
   return error('Not found', 404)

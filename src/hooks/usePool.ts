@@ -2,7 +2,7 @@ import { usesNumberedWeeks, leagueSeasonFor } from '../lib/leagues'
 import { defaultEmailPreferences, type EmailSettings, type EmailPreferences } from '../lib/email'
 import { selectedStartFromUrl } from '../lib/views'
 import { useEffect, useRef, useState } from 'react'
-import { emptyPool, fetchJson, sendJson, type PoolData } from '../lib/api'
+import { emptyPool, fetchJson, sendJson, type PoolData, type AdminUsersData } from '../lib/api'
 import {
   getDemoData,
   readDemoEntry,
@@ -375,4 +375,45 @@ export function useEmailSettings(session: PoolSession, demo: boolean) {
     save,
     retry: () => setReload((value) => value + 1),
   }
+}
+
+export function useAdminUsers(
+  session: PoolSession,
+  demo: boolean,
+  selected: Partial<Record<LeagueId, string>>,
+) {
+  const [data, setData] = useState<AdminUsersData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [reload, setReload] = useState(0)
+  const { getToken, isAdmin, userId } = session
+  const query = new URLSearchParams(selected).toString()
+  useEffect(() => {
+    setData(null)
+    setError('')
+    if (demo || !isAdmin) {
+      setLoading(false)
+      return
+    }
+    const controller = new AbortController()
+    setLoading(true)
+    void getToken()
+      .then((token) =>
+        fetchJson<AdminUsersData>(`/api/admin/users?${query}`, token, {
+          signal: controller.signal,
+        }),
+      )
+      .then((result) => {
+        if (!controller.signal.aborted) setData(result)
+      })
+      .catch((cause: unknown) => {
+        if (!controller.signal.aborted)
+          setError(cause instanceof Error ? cause.message : 'Could not load users')
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false)
+      })
+    return () => controller.abort()
+  }, [demo, isAdmin, userId, getToken, query, reload])
+  return { data, loading, error, refresh: () => setReload((value) => value + 1) }
 }

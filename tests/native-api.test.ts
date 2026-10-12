@@ -484,14 +484,19 @@ describe('request protection and routing', () => {
       ).status,
     ).toBe(200)
   })
+  it('does not expose website participation on the native API', async () => {
+    expect((await call('api/admin/users')).status).toBe(404)
+  })
   it('keeps route methods synchronized with OpenAPI', () => {
     const paths = Object.fromEntries(
-      Object.entries(contract.paths).map(([path, item]) => [
-        `/v1${path}`,
-        Object.keys(item as object)
-          .map((method) => method.toUpperCase())
-          .sort(),
-      ]),
+      Object.entries(contract.paths)
+        .filter(([path]) => path !== '/api/admin/users')
+        .map(([path, item]) => [
+          `/v1${path}`,
+          Object.keys(item as object)
+            .map((method) => method.toUpperCase())
+            .sort(),
+        ]),
     )
     expect(paths).toEqual(
       Object.fromEntries(

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import About from './About'
 import EmailSettingsPage from './components/EmailSettings'
 import AdminPanel from './components/AdminPanel'
+import AdminUsers from './components/AdminUsers'
 import LeagueTabs from './components/LeagueTabs'
 import LegalPage from './components/LegalPage'
 import PickSheet from './components/PickSheet'
@@ -322,6 +323,9 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
                     )
                   }
                 />
+              )}
+              {view === 'admin' && session.isAdmin && (
+                <AdminUsers key={session.userId ?? 'guest'} session={session} demo={demo} />
               )}
               {loading ? (
                 <div className="loading-panel">Loading the league slate…</div>

@@ -1195,6 +1195,56 @@ a {
 .admin-form input {
   width: 110px;
 }
+.admin-users {
+  margin-bottom: 24px;
+}
+.admin-users-message {
+  padding: 0 30px 24px;
+}
+.admin-users .admin-form input {
+  width: min(220px, 100%);
+}
+.admin-users-scroll {
+  overflow-x: auto;
+}
+.admin-users-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+}
+.admin-users-table caption {
+  text-align: left;
+  padding: 16px 30px;
+  color: #9db5d2;
+}
+.admin-users-table th,
+.admin-users-table td {
+  padding: 16px;
+  border-top: 1px solid #2b3d54;
+}
+.admin-users-table label {
+  display: grid;
+  gap: 8px;
+}
+.admin-users-table select {
+  max-width: 180px;
+  padding: 8px;
+  background: #172943;
+  border: 1px solid #38597e;
+  border-radius: 3px;
+  color: #fff;
+}
+.admin-entry-status {
+  white-space: nowrap;
+  color: #9db5d2;
+}
+.admin-entry-status.submitted {
+  color: #b8f3d0;
+}
+.admin-entry-status.incomplete {
+  color: #ffce7a;
+}
 .site-footer {
   border-top: 1px solid #26374c;
   background: #070d17;

@@ -485,3 +485,11 @@ Authenticated native provisioning, rotation, and pick saving with actual platfor
 sessions still need verification in the native clients. Production verification did not create
 keys, alter player entries, or enable email sending; signed test JWTs exercised the real Clerk SDK
 verification in the local regression suite.
+
+Admin’s private participation table lives in `src/components/AdminUsers.tsx`, with loading in
+`useAdminUsers` in `src/hooks/usePool.ts` and the website-only `GET /api/admin/users` query in
+`worker/admin.ts`. Authorization stays in `worker/api.ts`. It lists locally stored active accounts
+and legacy players, excludes deleted accounts, and exposes no emails or picks. NHL/PWHL/NFL/CFL
+columns each default to the latest released persisted pool and support independent past/upcoming
+week selection. Submitted means a complete valid entry; schedule-invalidated entries show
+Incomplete, missing entries show Not entered, and leagues without a released pool show No pool.

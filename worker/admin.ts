@@ -1,3 +1,6 @@
+import type { AdminUsersData, AdminEntryStatus } from '../src/lib/api'
+import { leagues } from '../src/lib/leagues'
+import { validatePicks, type LeagueId, type Pick } from '../src/lib/pool'
 import { usesNumberedWeeks, leagueSeasonFor } from '../src/lib/leagues'
 import { getCflSchedule, cflWeekByStart } from './cfl'
 import { addDays } from '../src/lib/pool'
@@ -191,4 +194,87 @@ export async function admin(request: Request, env: Env, path: string): Promise<R
     return json({ week: await getWeek(env.DB, league, selected) })
   }
   return error('Not found', 404)
+}
+
+export async function adminUsers(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url)
+  for (const { id } of leagues) {
+    const selected = url.searchParams.get(id)
+    if (selected !== null && !validStart(selected, id)) return error('Invalid week date', 400)
+  }
+  const weeks = await env.DB.prepare(
+    `SELECT league, start_date, week_number, opens_at FROM weekends w
+     WHERE EXISTS (SELECT 1 FROM games g WHERE g.league=w.league AND g.weekend_start=w.start_date)
+     ORDER BY start_date DESC`,
+  ).all<{ league: LeagueId; start_date: string; week_number: number | null; opens_at: string }>()
+  const columns: AdminUsersData['columns'] = leagues.map(({ id }) => {
+    const options = weeks.results.filter((week) => week.league === id)
+    return {
+      league: id,
+      selectedStart:
+        url.searchParams.get(id) ??
+        options.find((week) => Date.parse(week.opens_at) <= Date.now())?.start_date ??
+        null,
+      weeks: options.map((week) => ({ startDate: week.start_date, weekNumber: week.week_number })),
+    }
+  })
+  for (const column of columns) {
+    if (
+      column.selectedStart &&
+      !column.weeks.some((week) => week.startDate === column.selectedStart)
+    )
+      return error('Week not found', 404)
+  }
+  const accounts = await env.DB.prepare(
+    `SELECT a.clerk_id, COALESCE(a.username, p.username) AS username
+     FROM email_accounts a LEFT JOIN players p ON p.clerk_id=a.clerk_id
+     WHERE a.deleted_at IS NULL
+     UNION ALL
+     SELECT p.clerk_id, p.username FROM players p
+     WHERE NOT EXISTS (SELECT 1 FROM email_accounts a WHERE a.clerk_id=p.clerk_id)
+     ORDER BY username COLLATE NOCASE, clerk_id`,
+  ).all<{ clerk_id: string; username: string | null }>()
+  const statuses = new Map<string, AdminEntryStatus>()
+  for (const column of columns) {
+    if (!column.selectedStart) continue
+    const week = await getWeek(env.DB, column.league, column.selectedStart)
+    if (!week?.games.length) continue
+    const rows = await env.DB.prepare(
+      `SELECT e.clerk_id, k.game_id, k.side, k.confidence FROM entries e
+       LEFT JOIN picks k ON k.entry_id=e.id WHERE e.league=? AND e.weekend_start=?`,
+    )
+      .bind(column.league, column.selectedStart)
+      .all<{
+        clerk_id: string
+        game_id: number | null
+        side: Pick['side']
+        confidence: number
+      }>()
+    const entries = new Map<string, Pick[]>()
+    for (const row of rows.results) {
+      const picks = entries.get(row.clerk_id) ?? []
+      if (row.game_id !== null)
+        picks.push({ gameId: row.game_id, side: row.side, confidence: row.confidence })
+      entries.set(row.clerk_id, picks)
+    }
+    for (const [userId, picks] of entries) {
+      statuses.set(
+        `${column.league}:${userId}`,
+        validatePicks(picks, week.games).length ? 'incomplete' : 'submitted',
+      )
+    }
+  }
+  const users = accounts.results.map((account) => ({
+    userId: account.clerk_id,
+    username: account.username,
+    entries: Object.fromEntries(
+      columns.map((column) => [
+        column.league,
+        column.selectedStart
+          ? (statuses.get(`${column.league}:${account.clerk_id}`) ?? 'not-entered')
+          : 'no-pool',
+      ]),
+    ) as Record<LeagueId, AdminEntryStatus>,
+  }))
+  return json({ columns, users } satisfies AdminUsersData)
 }
