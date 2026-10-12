@@ -1,3 +1,4 @@
+import { usesNumberedWeeks } from '../../src/lib/leagues'
 import {
   addDays,
   easternDate,
@@ -40,7 +41,7 @@ export async function enqueueReminders(env: Env, now: number): Promise<void> {
     .all<{ league: LeagueId; start_date: string }>()
   for (const row of rows.results) {
     if (
-      row.league === 'nfl'
+      usesNumberedWeeks(row.league)
         ? day !== 4 || row.start_date !== date
         : day !== 5 || row.start_date !== weekendStartAt(now)
     )

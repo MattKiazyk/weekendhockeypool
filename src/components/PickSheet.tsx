@@ -1,3 +1,4 @@
+import { usesNumberedWeeks } from '../lib/leagues'
 import { useState } from 'react'
 import {
   addDays,
@@ -56,10 +57,9 @@ export default function PickSheet({
   const numbers = confidenceNumbers(games.length)
   const used = new Set(draft.map((pick) => pick.confidence))
   const remaining = numbers.filter((number) => !used.has(number))
-  const days =
-    week.league === 'nfl'
-      ? [...new Set(games.map((game) => game.easternDate))].sort()
-      : [0, 1, 2].map((offset) => addDays(week.startDate, offset))
+  const days = usesNumberedWeeks(week.league)
+    ? [...new Set(games.map((game) => game.easternDate))].sort()
+    : [0, 1, 2].map((offset) => addDays(week.startDate, offset))
   async function changeAlias() {
     try {
       await session.setUsername(alias.trim())
@@ -77,8 +77,8 @@ export default function PickSheet({
             <div>
               <b>Matchups are ready.</b>
               <span>
-                Picks open {week.league === 'nfl' ? 'Tuesday' : 'Monday'} at 8:00 a.m. Eastern. Come
-                back then to choose your teams.
+                Picks open {usesNumberedWeeks(week.league) ? 'Tuesday' : 'Monday'} at 8:00 a.m.
+                Eastern. Come back then to choose your teams.
               </span>
             </div>
           </div>
@@ -201,8 +201,8 @@ export default function PickSheet({
           ) : upcoming ? (
             <div className="locked-note upcoming-note">
               {entry
-                ? `Your saved entry is on file. You can change it when picks open ${week.league === 'nfl' ? 'Tuesday' : 'Monday'} at 8:00 a.m. Eastern.`
-                : `Team picks and submission open ${week.league === 'nfl' ? 'Tuesday' : 'Monday'} at 8:00 a.m. Eastern.`}
+                ? `Your saved entry is on file. You can change it when picks open ${usesNumberedWeeks(week.league) ? 'Tuesday' : 'Monday'} at 8:00 a.m. Eastern.`
+                : `Team picks and submission open ${usesNumberedWeeks(week.league) ? 'Tuesday' : 'Monday'} at 8:00 a.m. Eastern.`}
             </div>
           ) : (
             <div className="locked-note">

@@ -2,6 +2,7 @@ import {
   defaultEmailPreferences,
   type EmailSettings,
   type EmailPreferences,
+  type EmailPreferencesInput,
 } from '../../src/lib/email'
 import { leagues } from '../../src/lib/leagues'
 import { addDays, easternDate, easternTimeAt, type Weekend } from '../../src/lib/pool'
@@ -135,28 +136,25 @@ export async function readSettings(db: D1Database, userId: string): Promise<Emai
 export async function saveSettings(
   db: D1Database,
   userId: string,
-  preferences: EmailPreferences,
+  preferences: EmailPreferencesInput,
   now = Date.now(),
 ): Promise<void> {
   const timestamp = new Date(now).toISOString()
   await db.batch(
-    leagues.flatMap(({ id }) =>
-      (['reminder', 'recap'] as const).map((kind) =>
+    leagues.flatMap(({ id }) => {
+      const settings = preferences[id]
+      // An omitted CFL block must not write those rows, including during concurrent saves.
+      if (!settings) return []
+      return (['reminder', 'recap'] as const).map((kind) =>
         db
           .prepare(
             `INSERT INTO email_preferences (clerk_id, league, kind, enabled, enabled_at) VALUES (?, ?, ?, ?, ?)
-      ON CONFLICT(clerk_id, league, kind) DO UPDATE SET enabled=excluded.enabled,
-      enabled_at=CASE WHEN excluded.enabled=0 THEN NULL WHEN email_preferences.enabled=1 THEN email_preferences.enabled_at ELSE excluded.enabled_at END`,
+           ON CONFLICT(clerk_id, league, kind) DO UPDATE SET enabled=excluded.enabled,
+           enabled_at=CASE WHEN excluded.enabled=0 THEN NULL WHEN email_preferences.enabled=1 THEN email_preferences.enabled_at ELSE excluded.enabled_at END`,
           )
-          .bind(
-            userId,
-            id,
-            kind,
-            Number(preferences[id][kind]),
-            preferences[id][kind] ? timestamp : null,
-          ),
-      ),
-    ),
+          .bind(userId, id, kind, Number(settings[kind]), settings[kind] ? timestamp : null),
+      )
+    }),
   )
 }
 // Append after pick replacement so incomplete writes never reset reminder fatigue.

@@ -1,4 +1,6 @@
-import { isEmailPreferences } from '../src/lib/email'
+import { cflWeekContext } from './cfl'
+import { usesNumberedWeeks } from '../src/lib/leagues'
+import { isEmailPreferencesInput } from '../src/lib/email'
 import { readSettings, saveSettings, syncEmailAccount } from './email/store'
 import { clerkWebhook } from './email/webhook'
 import {
@@ -36,7 +38,7 @@ export async function api(request: Request, env: Env, verifiedUser?: Player): Pr
       } catch {
         return error('Invalid email preferences', 400)
       }
-      if (!isEmailPreferences(body))
+      if (!isEmailPreferencesInput(body))
         return error('Expected reminder and recap switches for each league', 400)
       if (
         !(await env.DB.prepare(
@@ -82,66 +84,86 @@ export async function api(request: Request, env: Env, verifiedUser?: Player): Pr
     })
   }
   if (path === '/api/week' && request.method === 'GET') {
-    if (league === 'nfl' && start) {
+    if (usesNumberedWeeks(league) && start) {
       if (!validStart(start, league)) return error('Invalid weekend date', 400)
       const saved = await getWeek(env.DB, league, start)
       if (saved)
         return json({
           week: saved.opensAt && Date.now() < Date.parse(saved.opensAt) ? null : saved,
           nflOffseason: false,
+          cflOffseason: false,
         })
     }
-    let nflContext: Awaited<ReturnType<typeof nflWeekContext>> | null = null
-    if (league === 'nfl') {
+    let footballContext:
+      | Awaited<ReturnType<typeof nflWeekContext>>
+      | Awaited<ReturnType<typeof cflWeekContext>>
+      | null = null
+    if (usesNumberedWeeks(league)) {
       try {
-        nflContext = await nflWeekContext()
+        footballContext =
+          league === 'cfl' ? await cflWeekContext(Date.now(), env.DB) : await nflWeekContext()
       } catch {
-        console.error('NFL week calendar unavailable')
-        if (start) return error('NFL schedule is temporarily unavailable', 503)
+        console.error(`${league.toUpperCase()} week calendar unavailable`)
+        if (start) return error(`${league.toUpperCase()} schedule is temporarily unavailable`, 503)
         const prefetched = await env.DB.prepare(
           'SELECT start_date FROM weekends WHERE league=? AND opens_at <= ? ORDER BY opens_at DESC LIMIT 1',
         )
-          .bind('nfl', new Date(Date.now()).toISOString())
+          .bind(league, new Date(Date.now()).toISOString())
           .first<{ start_date: string }>()
         if (prefetched) {
           const closesAt = easternTimeAt(addDays(prefetched.start_date, 5), 8)
           if (Date.now() < Date.parse(closesAt))
             return json({
-              week: await getWeek(env.DB, 'nfl', prefetched.start_date),
+              week: await getWeek(env.DB, league, prefetched.start_date),
               nflOffseason: false,
+              cflOffseason: false,
             })
         }
-        return error('NFL schedule is temporarily unavailable', 503)
+        return error(`${league.toUpperCase()} schedule is temporarily unavailable`, 503)
       }
     }
-    const currentStart =
-      league === 'nfl' ? nflContext?.active?.startDate : weekendStartAt(Date.now())
+    const currentStart = usesNumberedWeeks(league)
+      ? footballContext?.active?.startDate
+      : weekendStartAt(Date.now())
     const selected = start ?? currentStart
-    if (!selected) return json({ week: null, nflOffseason: nflContext?.offseason ?? false })
+    if (!selected)
+      return json({
+        week: null,
+        nflOffseason: league === 'nfl' && (footballContext?.offseason ?? false),
+        cflOffseason: league === 'cfl' && (footballContext?.offseason ?? false),
+      })
     if (!validStart(selected, league)) return error('Invalid weekend date', 400)
     let week = await getWeek(env.DB, league, selected)
-    if (league === 'nfl' && week && Date.now() < Date.parse(week.opensAt))
-      return json({ week: null, nflOffseason: nflContext?.offseason ?? false })
+    if (usesNumberedWeeks(league) && week && Date.now() < Date.parse(week.opensAt))
+      return json({
+        week: null,
+        nflOffseason: league === 'nfl' && (footballContext?.offseason ?? false),
+        cflOffseason: league === 'cfl' && (footballContext?.offseason ?? false),
+      })
     if (
       !week &&
-      (league === 'nfl'
+      (usesNumberedWeeks(league)
         ? selected === currentStart
         : [currentStart, addDays(currentStart!, 7)].includes(selected))
     ) {
       week = await syncSchedule(env.DB, league, selected)
     }
-    if (league !== 'nfl' && !start && !week?.games.length) {
+    if (!usesNumberedWeeks(league) && !start && !week?.games.length) {
       const nextStart = addDays(currentStart!, 7)
       const nextWeek =
         (await getWeek(env.DB, league, nextStart)) ??
         (await syncSchedule(env.DB, league, nextStart))
       if (nextWeek?.games.length) week = nextWeek
     }
-    return json({ week, nflOffseason: nflContext?.offseason ?? false })
+    return json({
+      week,
+      nflOffseason: league === 'nfl' && (footballContext?.offseason ?? false),
+      cflOffseason: league === 'cfl' && (footballContext?.offseason ?? false),
+    })
   }
   if (path === '/api/weeks' && request.method === 'GET') {
     const rows = await env.DB.prepare(
-      "SELECT league, start_date, season, week_number, status, lock_at, finalized_at FROM weekends WHERE league=? AND (league!='nfl' OR opens_at <= ?) AND EXISTS (SELECT 1 FROM games WHERE games.league=weekends.league AND games.weekend_start=weekends.start_date) ORDER BY start_date DESC",
+      "SELECT league, start_date, season, week_number, status, lock_at, finalized_at FROM weekends WHERE league=? AND (league NOT IN ('nfl','cfl') OR opens_at <= ?) AND EXISTS (SELECT 1 FROM games WHERE games.league=weekends.league AND games.weekend_start=weekends.start_date) ORDER BY start_date DESC",
     )
       .bind(league, new Date().toISOString())
       .all()
@@ -150,7 +172,7 @@ export async function api(request: Request, env: Env, verifiedUser?: Player): Pr
   if (path === '/api/entrants' && request.method === 'GET') {
     if (!validStart(start, league)) return error('Invalid weekend date', 400)
     const entrantsWeek = await getWeek(env.DB, league, start)
-    if (league === 'nfl' && entrantsWeek && Date.now() < Date.parse(entrantsWeek.opensAt))
+    if (usesNumberedWeeks(league) && entrantsWeek && Date.now() < Date.parse(entrantsWeek.opensAt))
       return error('Week is not available yet', 404)
     const rows = await env.DB.prepare(
       'SELECT p.username FROM entries e JOIN players p ON p.clerk_id=e.clerk_id WHERE e.league=? AND e.weekend_start=? ORDER BY p.username COLLATE NOCASE',
@@ -180,7 +202,8 @@ export async function api(request: Request, env: Env, verifiedUser?: Player): Pr
       `SELECT p.username, SUM(s.points) AS points, SUM(s.correct) AS correct,
       SUM(CASE WHEN s.league='nhl' THEN s.points END) AS nhlPoints,
       SUM(CASE WHEN s.league='pwhl' THEN s.points END) AS pwhlPoints,
-      SUM(CASE WHEN s.league='nfl' THEN s.points END) AS nflPoints
+      SUM(CASE WHEN s.league='nfl' THEN s.points END) AS nflPoints,
+      SUM(CASE WHEN s.league='cfl' THEN s.points END) AS cflPoints
       FROM standings s JOIN weekends w ON w.league=s.league AND w.start_date=s.weekend_start
       JOIN players p ON p.clerk_id=s.clerk_id
       WHERE w.season=? AND w.status='final' AND (?='all' OR s.league=?)
@@ -194,6 +217,7 @@ export async function api(request: Request, env: Env, verifiedUser?: Player): Pr
         nhlPoints: number | null
         pwhlPoints: number | null
         nflPoints: number | null
+        cflPoints: number | null
       }>()
     const standings = rankScores(rows.results)
     return json({
@@ -213,7 +237,7 @@ export async function api(request: Request, env: Env, verifiedUser?: Player): Pr
     if (request.method === 'GET') {
       if (!validStart(start, league)) return error('Invalid weekend date', 400)
       const entryWeek = await getWeek(env.DB, league, start)
-      if (league === 'nfl' && entryWeek && Date.now() < Date.parse(entryWeek.opensAt))
+      if (usesNumberedWeeks(league) && entryWeek && Date.now() < Date.parse(entryWeek.opensAt))
         return error('Week is not available yet', 404)
       const entry = await getEntry(env.DB, league, start, user.userId)
       return json({ entry })
@@ -235,7 +259,7 @@ export async function api(request: Request, env: Env, verifiedUser?: Player): Pr
     const week = await getWeek(env.DB, bodyLeague, bodyStart)
     if (week?.status === 'open' && Date.now() < Date.parse(week.opensAt))
       return error(
-        `Picks open ${bodyLeague === 'nfl' ? 'Tuesday' : 'Monday'} at 8:00 a.m. Eastern`,
+        `Picks open ${usesNumberedWeeks(bodyLeague) ? 'Tuesday' : 'Monday'} at 8:00 a.m. Eastern`,
         409,
       )
     if (!week || !isEntryOpen(week)) return error('Entries are closed', 409)

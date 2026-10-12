@@ -35,7 +35,7 @@ info:
 
     Preserves website field naming, including game_id and start_date in listings. Week dates,
     opening times, and deadlines use America/New_York. Only finalized weeks contribute to season
-    totals. NFL 2026 uses season key 2026-27.
+    totals. NFL and CFL 2026 use season key 2026-27, including June CFL games.
 servers:
   - url: https://api.weeklypools.ca/v1
 paths:
@@ -124,6 +124,7 @@ paths:
               - nhl
               - pwhl
               - nfl
+              - cfl
             default: nhl
         - name: start
           in: query
@@ -132,7 +133,7 @@ paths:
             type: string
             format: date
           description:
-            'Eastern pool-week start date: Friday for hockey, Thursday for NFL. NFL weekNumber is
+            'Eastern pool-week start date: Friday for hockey, Thursday for NFL/CFL. Official weekNumber is
             official ESPN week assignment.'
   /weeks:
     get:
@@ -168,6 +169,7 @@ paths:
               - nhl
               - pwhl
               - nfl
+              - cfl
             default: nhl
   /entrants:
     get:
@@ -203,6 +205,7 @@ paths:
               - nhl
               - pwhl
               - nfl
+              - cfl
             default: nhl
         - name: start
           in: query
@@ -211,7 +214,7 @@ paths:
             type: string
             format: date
           description:
-            'Eastern pool-week start date: Friday for hockey, Thursday for NFL. NFL weekNumber is
+            'Eastern pool-week start date: Friday for hockey, Thursday for NFL/CFL. Official weekNumber is
             official ESPN week assignment.'
   /standings:
     get:
@@ -247,6 +250,7 @@ paths:
               - nhl
               - pwhl
               - nfl
+              - cfl
             default: nhl
         - name: start
           in: query
@@ -255,7 +259,7 @@ paths:
             type: string
             format: date
           description:
-            'Eastern pool-week start date: Friday for hockey, Thursday for NFL. NFL weekNumber is
+            'Eastern pool-week start date: Friday for hockey, Thursday for NFL/CFL. Official weekNumber is
             official ESPN week assignment.'
   /season:
     get:
@@ -291,6 +295,7 @@ paths:
               - nhl
               - pwhl
               - nfl
+              - cfl
               - all
             default: nhl
         - name: season
@@ -361,6 +366,7 @@ paths:
               - nhl
               - pwhl
               - nfl
+              - cfl
             default: nhl
         - name: start
           in: query
@@ -369,7 +375,7 @@ paths:
             type: string
             format: date
           description:
-            'Eastern pool-week start date: Friday for hockey, Thursday for NFL. NFL weekNumber is
+            'Eastern pool-week start date: Friday for hockey, Thursday for NFL/CFL. Official weekNumber is
             official ESPN week assignment.'
     put:
       summary: Atomically replace caller picks
@@ -449,6 +455,7 @@ paths:
               - nhl
               - pwhl
               - nfl
+              - cfl
             default: nhl
         - name: start
           in: query
@@ -457,7 +464,7 @@ paths:
             type: string
             format: date
           description:
-            'Eastern pool-week start date: Friday for hockey, Thursday for NFL. NFL weekNumber is
+            'Eastern pool-week start date: Friday for hockey, Thursday for NFL/CFL. Official weekNumber is
             official ESPN week assignment.'
       description: Website /api/picks allows guests after the deadline; this native route requires both credentials. Returns 403 before the actual deadline, regardless of status labels.
   /email-settings:
@@ -517,7 +524,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EmailPreferences'
+              $ref: '#/components/schemas/EmailPreferencesInput'
   /keys:
     get:
       summary: List caller device-key metadata, including revoked keys
@@ -858,6 +865,7 @@ components:
             - nhl
             - pwhl
             - nfl
+            - cfl
         label:
           type: string
         name:
@@ -891,6 +899,7 @@ components:
               - nhl
               - pwhl
               - nfl
+              - cfl
       required:
         - openLeagues
     Team:
@@ -975,6 +984,7 @@ components:
             - nhl
             - pwhl
             - nfl
+            - cfl
         startDate:
           type: string
           format: date
@@ -1027,9 +1037,12 @@ components:
             - type: 'null'
         nflOffseason:
           type: boolean
+        cflOffseason:
+          type: boolean
       required:
         - week
         - nflOffseason
+        - cflOffseason
     WeekListing:
       type: object
       additionalProperties: false
@@ -1040,6 +1053,7 @@ components:
             - nhl
             - pwhl
             - nfl
+            - cfl
         start_date:
           type: string
           format: date
@@ -1132,6 +1146,10 @@ components:
           anyOf:
             - type: integer
             - type: 'null'
+        cflPoints:
+          anyOf:
+            - type: integer
+            - type: 'null'
         nflPoints:
           anyOf:
             - type: integer
@@ -1144,6 +1162,7 @@ components:
         - nhlPoints
         - pwhlPoints
         - nflPoints
+        - cflPoints
     Standings:
       type: object
       additionalProperties: false
@@ -1268,6 +1287,7 @@ components:
             - nhl
             - pwhl
             - nfl
+            - cfl
           default: nhl
         startDate:
           type: string
@@ -1303,7 +1323,7 @@ components:
         - reminder
         - recap
     EmailPreferences:
-      description: All six switches initially default on. Saved opt-outs persist across sign-ins.
+      description: All eight switches initially default on. Saved opt-outs persist across sign-ins.
       type: object
       additionalProperties: false
       properties:
@@ -1312,6 +1332,26 @@ components:
         pwhl:
           $ref: '#/components/schemas/EmailSwitches'
         nfl:
+          $ref: '#/components/schemas/EmailSwitches'
+        cfl:
+          $ref: '#/components/schemas/EmailSwitches'
+      required:
+        - nhl
+        - pwhl
+        - nfl
+        - cfl
+    EmailPreferencesInput:
+      description: CFL may be omitted by older clients; its saved preferences remain unchanged.
+      type: object
+      additionalProperties: false
+      properties:
+        nhl:
+          $ref: '#/components/schemas/EmailSwitches'
+        pwhl:
+          $ref: '#/components/schemas/EmailSwitches'
+        nfl:
+          $ref: '#/components/schemas/EmailSwitches'
+        cfl:
           $ref: '#/components/schemas/EmailSwitches'
       required:
         - nhl

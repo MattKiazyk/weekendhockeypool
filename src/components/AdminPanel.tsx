@@ -1,3 +1,4 @@
+import { usesNumberedWeeks } from '../lib/leagues'
 import { useState } from 'react'
 import type { Weekend } from '../lib/pool'
 import { formatDay } from '../lib/format'
@@ -105,7 +106,9 @@ export default function AdminPanel({ week, saving, onAction, onSelectWeek }: Adm
         </div>
         <div className="admin-form">
           <label>
-            {week.league === 'nfl' ? 'NFL week Thursday' : 'Weekend Friday'}
+            {usesNumberedWeeks(week.league)
+              ? `${week.league.toUpperCase()} week Thursday`
+              : 'Weekend Friday'}
             <input
               type="date"
               value={week.startDate}

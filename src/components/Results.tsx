@@ -1,3 +1,4 @@
+import { usesNumberedWeeks } from '../lib/leagues'
 import type {
   CombinedStanding,
   LeagueId,
@@ -136,10 +137,17 @@ export function SeasonResults({
     <div className="results-layout">
       <div className="results-main">
         <div className="results-intro">
-          <span className="card-kicker">{demo ? 'SAMPLE' : season} REGULAR SEASON</span>
+          <span className="card-kicker">
+            {demo
+              ? 'SAMPLE'
+              : scope === 'league' && usesNumberedWeeks(league)
+                ? season.slice(0, 4)
+                : season}{' '}
+            REGULAR SEASON
+          </span>
           <h3>EVERY WEEK COUNTS.</h3>
           <p>
-            Points from finalized regular-season pools add up here. Enter one league or all three.
+            Points from finalized regular-season pools add up here. Enter one league or all four.
           </p>
           <div className="season-scope" aria-label="Season standings scope">
             <button
@@ -167,7 +175,9 @@ export function SeasonResults({
       </div>
       <aside className="results-aside">
         <span className="card-kicker">THE RACE</span>
-        <strong>{season}</strong>
+        <strong>
+          {scope === 'league' && usesNumberedWeeks(league) ? season.slice(0, 4) : season}
+        </strong>
         <span>{scope === 'all' ? 'ALL LEAGUES' : `${league.toUpperCase()} REGULAR SEASON`}</span>
         <div className="board-divider" />
         <p>

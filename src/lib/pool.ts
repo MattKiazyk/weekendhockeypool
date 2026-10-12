@@ -1,5 +1,5 @@
 export type Side = 'away' | 'home'
-export type LeagueId = 'nhl' | 'pwhl' | 'nfl'
+export type LeagueId = 'nhl' | 'pwhl' | 'nfl' | 'cfl'
 export type GameState = 'scheduled' | 'live' | 'final' | 'void'
 export type WeekendStatus = 'open' | 'locked' | 'final'
 
@@ -73,6 +73,7 @@ export interface CombinedStanding extends Standing {
   nhlPoints: number | null
   pwhlPoints: number | null
   nflPoints: number | null
+  cflPoints: number | null
 }
 
 export function isWeekendComplete(week: Weekend): boolean {

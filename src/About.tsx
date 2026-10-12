@@ -9,7 +9,7 @@ const steps = [
   {
     number: '01',
     title: 'Pick one winner',
-    text: 'Choose NHL, PWHL, or NFL. Hockey sheets cover Friday through Sunday; NFL sheets follow the official regular-season week. Pick a winner for every game.',
+    text: 'Choose NHL, PWHL, NFL, or CFL. Hockey sheets cover Friday through Sunday; NFL and CFL sheets follow the official regular-season week. Pick a winner for every game.',
   },
   {
     number: '02',
@@ -37,8 +37,8 @@ function About({ demo, onPlay }: AboutProps) {
             MAKE YOUR <em>CALL.</em>
           </h1>
           <p>
-            Join NHL, PWHL, NFL, or any mix. You can make one entry per league each week, and you’re
-            free to skip any league or week. It’s all just for fun.
+            Join NHL, PWHL, NFL, CFL, or any mix. You can make one entry per league each week, and
+            you’re free to skip any league or week. It’s all just for fun.
           </p>
           <button type="button" className="about-cta" onClick={onPlay}>
             See this week’s games <span aria-hidden="true">↗</span>
@@ -122,8 +122,8 @@ function About({ demo, onPlay }: AboutProps) {
               <h3>When can I enter?</h3>
               <p>
                 Hockey matchups are visible early, with picks opening Monday at 8 a.m. Eastern. NFL
-                weeks open Tuesday at 8 a.m. Eastern. Each league locks at its first scheduled game,
-                and you can save changes until then.
+                and CFL weeks open Tuesday at 8 a.m. Eastern. Each league locks at its first
+                scheduled game, and you can save changes until then.
               </p>
             </article>
             <article>
@@ -143,8 +143,8 @@ function About({ demo, onPlay }: AboutProps) {
               </span>
               <h3>What if a game is postponed?</h3>
               <p>
-                A postponed or cancelled game is void for everyone. NFL ties and games moved to a
-                different NFL week are also void. The remaining picks keep their numbers.
+                A postponed or cancelled game is void for everyone. NFL and CFL ties and games moved
+                to a different official week are also void. The remaining picks keep their numbers.
               </p>
             </article>
             <article>

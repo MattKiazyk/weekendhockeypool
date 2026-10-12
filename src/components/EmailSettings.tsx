@@ -1,3 +1,4 @@
+import { usesNumberedWeeks } from '../lib/leagues'
 import { useState } from 'react'
 import { useEmailSettings } from '../hooks/usePool'
 import { leagues } from '../lib/leagues'
@@ -77,8 +78,8 @@ export default function EmailSettingsPage({
                     <span>
                       <strong>Pick reminder</strong>
                       <small>
-                        {id === 'nfl' ? 'Thursday' : 'Friday'} at 9 a.m. Eastern, if your entry is
-                        incomplete and picks are still open.
+                        {usesNumberedWeeks(id) ? 'Thursday' : 'Friday'} at 9 a.m. Eastern, if your
+                        entry is incomplete and picks are still open.
                       </small>
                     </span>
                   </label>

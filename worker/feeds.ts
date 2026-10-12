@@ -1,3 +1,4 @@
+import { getCflRecords, getCflResults, getCflSchedule } from './cfl'
 import type { Game, LeagueId, Side, Weekend } from '../src/lib/pool'
 import { getNhlRecords, getNhlResults, getNhlSchedule } from './nhl'
 import { getPwhlRecords, getPwhlResults, getPwhlSchedule } from './pwhl'
@@ -26,9 +27,12 @@ interface LeagueFeed {
 const feeds: Record<LeagueId, LeagueFeed> = {
   nhl: { schedule: getNhlSchedule, results: getNhlResults, records: getNhlRecords },
   pwhl: { schedule: getPwhlSchedule, results: getPwhlResults, records: getPwhlRecords },
+  cfl: { schedule: getCflSchedule, results: getCflResults, records: getCflRecords },
   nfl: { schedule: getNflSchedule, results: getNflResults, records: getNflRecords },
 }
 
-export function feedFor(league: LeagueId): LeagueFeed {
-  return feeds[league]
+export function feedFor(league: LeagueId, db?: D1Database): LeagueFeed {
+  return league === 'cfl'
+    ? { ...feeds.cfl, schedule: (start) => getCflSchedule(start, db) }
+    : feeds[league]
 }

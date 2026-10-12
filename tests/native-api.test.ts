@@ -302,14 +302,20 @@ describe('protected shared pool handlers', () => {
       expect((await call('entry', 'PUT', { startDate: start, picks: invalid })).status).toBe(400)
     expect(await getEntry(env.DB, 'nhl', start, admin.userId)).toBeNull()
   })
-  it('shares league-scoped saves and returns games and records for NHL, PWHL, and NFL', async () => {
-    for (const league of ['nhl', 'pwhl', 'nfl'] as const) {
-      const selected = league === 'nfl' ? addDays(start, -1) : start
+  it('shares league-scoped saves and returns games and records for NHL, PWHL, NFL, and CFL', async () => {
+    for (const league of ['nhl', 'pwhl', 'nfl', 'cfl'] as const) {
+      const selected = league === 'nfl' || league === 'cfl' ? addDays(start, -1) : start
       if (league !== 'nhl') {
         await env.DB.prepare(
           'INSERT INTO weekends (league,start_date,season,opens_at,week_number) VALUES (?,?,?,?,?)',
         )
-          .bind(league, selected, '2099-00', '2000-01-01T00:00:00Z', league === 'nfl' ? 4 : null)
+          .bind(
+            league,
+            selected,
+            '2099-00',
+            '2000-01-01T00:00:00Z',
+            league === 'nfl' || league === 'cfl' ? 4 : null,
+          )
           .run()
         await env.DB.batch([
           upsertGame(env.DB, league, selected, game, 'feed'),
@@ -346,6 +352,11 @@ describe('protected shared pool handlers', () => {
     const saved = await call('email-settings', 'PUT', preferences)
     await conforms(saved, '/email-settings', 'put')
     expect(await saved.json()).toHaveProperty('preferences', preferences)
+    const { cfl, ...legacy } = preferences
+    const legacySaved = await call('email-settings', 'PUT', legacy)
+    await conforms(legacySaved, '/email-settings', 'put')
+    expect(await legacySaved.json()).toHaveProperty('preferences.cfl', cfl)
+    expect(ajv.getSchema('native#/components/schemas/EmailPreferencesInput')!(legacy)).toBe(true)
     expect(await (await call(`entrants?start=${start}`)).text()).not.toContain(
       'private@example.com',
     )

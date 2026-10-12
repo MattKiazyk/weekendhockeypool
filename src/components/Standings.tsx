@@ -72,6 +72,7 @@ export function CombinedStandingsList({ rows }: { rows: CombinedStanding[] }) {
         <span>NHL</span>
         <span>PWHL</span>
         <span>NFL</span>
+        <span>CFL</span>
         <span>TOTAL</span>
       </div>
       {rows.map((row) => (
@@ -83,6 +84,7 @@ export function CombinedStandingsList({ rows }: { rows: CombinedStanding[] }) {
           <span>{row.nhlPoints ?? '—'}</span>
           <span>{row.pwhlPoints ?? '—'}</span>
           <span>{row.nflPoints ?? '—'}</span>
+          <span>{row.cflPoints ?? '—'}</span>
           <b>{row.points}</b>
         </div>
       ))}

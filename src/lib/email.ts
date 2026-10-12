@@ -1,7 +1,9 @@
-import { isLeague } from './leagues'
+import { isLeague, leagues } from './leagues'
 import type { LeagueId } from './pool'
 
 export type EmailPreferences = Record<LeagueId, { reminder: boolean; recap: boolean }>
+export type EmailPreferencesInput = Omit<EmailPreferences, 'cfl'> &
+  Partial<Pick<EmailPreferences, 'cfl'>>
 export interface EmailSettings {
   email: string | null
   verified: boolean
@@ -12,6 +14,7 @@ export function emptyEmailPreferences(): EmailPreferences {
     nhl: { reminder: false, recap: false },
     pwhl: { reminder: false, recap: false },
     nfl: { reminder: false, recap: false },
+    cfl: { reminder: false, recap: false },
   }
 }
 export function defaultEmailPreferences(): EmailPreferences {
@@ -19,13 +22,14 @@ export function defaultEmailPreferences(): EmailPreferences {
     nhl: { reminder: true, recap: true },
     pwhl: { reminder: true, recap: true },
     nfl: { reminder: true, recap: true },
+    cfl: { reminder: true, recap: true },
   }
 }
 export function isEmailPreferences(value: unknown): value is EmailPreferences {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false
   const entries = Object.entries(value)
   return (
-    entries.length === 3 &&
+    entries.length === leagues.length &&
     entries.every(
       ([league, settings]) =>
         isLeague(league) &&
@@ -37,4 +41,10 @@ export function isEmailPreferences(value: unknown): value is EmailPreferences {
         typeof settings.recap === 'boolean',
     )
   )
+}
+
+// Older clients send only the original three leagues; do not reset CFL opt-outs.
+export function isEmailPreferencesInput(value: unknown): value is EmailPreferencesInput {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  return isEmailPreferences({ cfl: { reminder: true, recap: true }, ...value })
 }

@@ -1,6 +1,6 @@
 # Weekly Pools
 
-Weekend confidence pools for NHL and PWHL Friday–Sunday games and official NFL regular-season weeks, built with React, Vite, a Cloudflare Worker, D1, and Clerk. Each person can submit one entry per league per pool week. The new canonical address is [weeklypools.ca](https://weeklypools.ca). The previous pool and hockey addresses will redirect there after domain and authentication verification.
+Weekend confidence pools for NHL and PWHL Friday–Sunday games and official NFL and CFL regular-season weeks, built with React, Vite, a Cloudflare Worker, D1, and Clerk. Each person can submit one entry per league per pool week. The new canonical address is [weeklypools.ca](https://weeklypools.ca). The previous pool and hockey addresses will redirect there after domain and authentication verification.
 
 ## Local development
 
@@ -13,7 +13,7 @@ npm run db:migrate:local
 npm run dev
 ```
 
-Open the Vite URL, normally `http://127.0.0.1:5173`. Without a Clerk publishable key, development shows interactive NHL and NFL previews using checked-in October 2026 fixtures; PWHL shows its coming-soon state. NHL includes nearby sample weekends. The yellow bar switches hockey between upcoming, open, locked, and final states, and NFL between open, locked, final, and offseason states. NHL entries use the legacy `hockey-pool-demo-entry` localStorage key for the main sample weekend and date-suffixed keys for nearby weekends; NFL uses `hockey-pool-demo-entry-nfl`. Clear the corresponding key to reset a preview. Preview mode never submits entries to D1.
+Open the Vite URL, normally `http://127.0.0.1:5173`. Without a Clerk publishable key, development shows interactive NHL, NFL, and CFL previews using checked-in October 2026 fixtures; PWHL shows its coming-soon state. NHL includes nearby sample weekends. CFL previews use an October 2026 official week. The yellow bar switches hockey between upcoming, open, locked, and final states, and NFL/CFL between open, locked, final, and offseason states. NHL entries use the legacy `hockey-pool-demo-entry` localStorage key for the main sample weekend and date-suffixed keys for nearby weekends; NFL uses `hockey-pool-demo-entry-nfl` and CFL uses `hockey-pool-demo-entry-cfl`. Clear the corresponding key to reset a preview. Preview mode never submits entries to D1.
 
 For the real authentication flow, copy the configuration templates and fill in development credentials from the existing Clerk application (**Weekly Pools**, originally **Hockey**). Keep the same application and user IDs:
 
@@ -67,30 +67,30 @@ private email settings and delivery, and Google Analytics cookies and usage meas
 
 ## Code layout
 
-| Path                                             | Responsibility                                                                 |
-| ------------------------------------------------ | ------------------------------------------------------------------------------ |
-| `src/main.tsx`                                   | Clerk and preview session adapters                                             |
-| `src/App.tsx`                                    | Navigation, page composition, and action feedback                              |
-| `src/components/`                                | Pick sheet, matchup controls, standings, admin forms, and shared page elements |
-| `src/About.tsx`                                  | Public playbook and rules                                                      |
-| `src/components/LegalPage.tsx`                   | Public privacy policy and terms of service                                     |
-| `src/components/SiteFooter.tsx`, `ViewLink.tsx`  | Footer attribution/legal links and shared in-app anchors                       |
-| `src/hooks/usePool.ts`                           | Loading, cancellation, deadline refresh, entrants polling, and saving          |
-| `src/lib/pool.ts`                                | Shared types and pure pool rules used by both browser and Worker               |
-| `src/lib/leagues.ts`                             | Supported league IDs and display metadata                                      |
-| `src/lib/api.ts`                                 | Browser JSON requests and the pool data shape                                  |
-| `src/lib/demo.ts`                                | Preview fixtures and validated browser storage                                 |
-| `src/lib/format.ts`, `session.ts`, `views.ts`    | Display dates, session contract, and navigation metadata                       |
-| `src/style.css`                                  | Shared styling and responsive rules                                            |
-| `worker/index.ts`                                | Cloudflare fetch and scheduled entry points                                    |
-| `worker/api.ts`, `admin.ts`                      | API routing, authorization checks, and admin operations                        |
-| `worker/auth.ts`                                 | Clerk session verification                                                     |
-| `worker/db.ts`                                   | Database row conversion, shared game writes, and atomic entry replacement      |
-| `worker/nhl.ts`, `pwhl.ts`, `nfl.ts`, `feeds.ts` | League feed normalization and adapter selection                                |
-| `worker/sync.ts`                                 | Shared league schedule and result refreshes                                    |
-| `worker/standings.ts`                            | Final score calculation and publication                                        |
-| `migrations/`                                    | D1 schema and deadline triggers, applied in order                              |
-| `tests/`                                         | Rules and Worker regression tests using the actual SQL migrations              |
+| Path                                                       | Responsibility                                                                 |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `src/main.tsx`                                             | Clerk and preview session adapters                                             |
+| `src/App.tsx`                                              | Navigation, page composition, and action feedback                              |
+| `src/components/`                                          | Pick sheet, matchup controls, standings, admin forms, and shared page elements |
+| `src/About.tsx`                                            | Public playbook and rules                                                      |
+| `src/components/LegalPage.tsx`                             | Public privacy policy and terms of service                                     |
+| `src/components/SiteFooter.tsx`, `ViewLink.tsx`            | Footer attribution/legal links and shared in-app anchors                       |
+| `src/hooks/usePool.ts`                                     | Loading, cancellation, deadline refresh, entrants polling, and saving          |
+| `src/lib/pool.ts`                                          | Shared types and pure pool rules used by both browser and Worker               |
+| `src/lib/leagues.ts`                                       | Supported league IDs and display metadata                                      |
+| `src/lib/api.ts`                                           | Browser JSON requests and the pool data shape                                  |
+| `src/lib/demo.ts`                                          | Preview fixtures and validated browser storage                                 |
+| `src/lib/format.ts`, `session.ts`, `views.ts`              | Display dates, session contract, and navigation metadata                       |
+| `src/style.css`                                            | Shared styling and responsive rules                                            |
+| `worker/index.ts`                                          | Cloudflare fetch and scheduled entry points                                    |
+| `worker/api.ts`, `admin.ts`                                | API routing, authorization checks, and admin operations                        |
+| `worker/auth.ts`                                           | Clerk session verification                                                     |
+| `worker/db.ts`                                             | Database row conversion, shared game writes, and atomic entry replacement      |
+| `worker/nhl.ts`, `pwhl.ts`, `nfl.ts`, `cfl.ts`, `feeds.ts` | League feed normalization and adapter selection                                |
+| `worker/sync.ts`                                           | Shared league schedule and result refreshes                                    |
+| `worker/standings.ts`                                      | Final score calculation and publication                                        |
+| `migrations/`                                              | D1 schema and deadline triggers, applied in order                              |
+| `tests/`                                                   | Rules and Worker regression tests using the actual SQL migrations              |
 
 About’s interactive examples live in `src/components/AboutExample.tsx`. They use the real
 matchup and standings components with labeled sample data and local state, without saving entries.
@@ -108,14 +108,40 @@ matchup and standings components with labeled sample data and local state, witho
 - Entries close at the earliest game start. Both the API and D1 triggers enforce the deadline and each league's opening time. Entry replacement is a single database batch so a failed write preserves the previous entry. Earlier entries remain on file during an upcoming period, while schedule corrections may remove displaced picks.
 - Submitted usernames are public immediately. Other players' picks are public after the deadline and remain hidden until the actual deadline, regardless of a weekend's status label.
 - Only final winning picks earn points. Void games earn zero. NFL ties are void, as are locked NFL games moved to another official week. Rankings publish after the deadline and once every frozen game is final or void; tied point totals share competition ranks (1, 1, 3).
-- Each league has separate weekly and season standings. The **All leagues** season view sums finalized points from any of the three leagues and shows each contribution. NFL 2026 belongs to the shared 2026–27 pool season, while NFL views display the 2026 season year and official week number. A player can appear after entering only one league. Entries made incomplete by a pre-lock schedule change must be updated before lock to qualify for standings.
+- Each league has separate weekly and season standings. The **All leagues** season view sums finalized points from any of the four leagues and shows each contribution. NFL 2026 belongs to the shared 2026–27 pool season, while NFL views display the 2026 season year and official week number. A player can appear after entering only one league. Entries made incomplete by a pre-lock schedule change must be updated before lock to qualify for standings.
 - Admins can add/remove games before lock and correct/void results. Manual changes take precedence over the feed, and removed games stay excluded during later schedule refreshes.
 
 The NHL adapter reads `schedule/{date}`, `score/{date}`, and `gamecenter/{id}/landing` from `https://api-web.nhle.com/v1/`. The PWHL adapter uses the [LeagueStat feed documented in the PWHL Data Reference](https://github.com/IsabelleLefebvre97/PWHL-Data-Reference) for seasons, schedules, teams, and results. It discovers regular-season IDs and uses the feed's offset-aware `GameDateISO8601` time. The PWHL pool begins with the 2026–27 regular season; older PWHL results are not imported. The NFL adapter reads ESPN’s [weekly scoreboard](https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=2026&seasontype=2&week=4) and event summaries using the [community endpoint reference](https://gist.github.com/nntrn/ee26cb2a0716de0947a0a4e9a157bc1c) supplied for this feature. It uses ESPN's regular-season week calendar and event week number; earlier NFL weeks are not imported. A 15-minute cron checks the current and next hockey weekend, refreshes open hockey schedules around noon UTC, refreshes the active NFL slate, prefetches the next NFL week within seven days of release, and updates pending results. Empty replacement feeds cannot erase an existing slate. Once locked, the slate is frozen; postponed/cancelled games and games moved out of the selected pool week are voided.
 
+The CFL adapter uses the CFL-hosted `https://echo.pims.cfl.ca/api` JSON feed, without an API key:
+`/seasons` discovers the season ID, `/seasons/{id}/fixtures?limit=100&page={page}` supplies the
+paginated schedule/results, `/fixtures/{id}` supplies missing-game results, `/teams` supplies names
+and logos, and `/standings/{year}` supplies W–L–T records. Fixture pagination is bounded to 20 pages
+and rejects repeated IDs/pages. Only `game_type_id: 1` regular-season games qualify; the official
+`week` field includes Monday holiday games and other date exceptions. Offset-aware `start_at` owns
+the kickoff time. Unknown result statuses and incomplete final scores are retried, rather than
+used to finalize a week. Finished ties and games moved to another official week are void.
+
+CFL follows the NFL release pattern: Tuesday at 8 a.m. Eastern opening, first-kickoff lock,
+Thursday at 9 a.m. Eastern reminders, numbered week navigation, seven-day prefetch, past-week
+access, and offseason display. Week keys are Thursdays, anchored to the Thursday on or before
+Week 1's earliest Eastern kickoff; later weeks advance seven days per official week number.
+Once a CFL week is persisted, it fixes the season's anchor for later feed corrections. The entire
+CFL calendar-year season shares the corresponding pool season (CFL 2026 → `2026-27`, including
+June). New CFL pools are never backfilled after their first kickoff. Feed outages preserve saved
+weeks and records. Public feed access has been tested locally and from the deployed Worker.
+No API-specific usage agreement or availability guarantee has been identified; public access
+does not establish either.
+
+Migration `0015_cfl.sql` adds CFL and enables only the two new CFL email switches for existing
+active accounts, preserving every previous opt-out. Older email-settings write requests may omit
+CFL; its saved settings remain unchanged. Week responses add `cflOffseason` while retaining
+`nflOffseason`, and combined standings add `cflPoints`. The CFL tab uses a local copy of the
+[CFL primary logo](https://content.cfl.ca/logos/cfl-primary.svg) in `public/leagues/cfl.svg`.
+
 League tabs use the [NHL shield asset](https://assets.nhle.com/logos/nhl/svg/NHL_light.svg), the [white PWHL lockup](https://res.cloudinary.com/pwhl-low/image/upload/PWHL_Logo_Lockup_White_z8mr75), and the [transparent NFL shield supplied by ESPN](https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png). Local copies are in `public/leagues/`.
 
-The browser uses `/api/week`, `/api/weeks`, `/api/open-leagues`, `/api/entrants`, `/api/standings`, and `/api/season` for public data. `/api/open-leagues` returns league IDs with released, entry-accepting slates for the tab indicators. Other endpoints accept `league=nhl|pwhl|nfl` and default to NHL for existing links; `/api/season` also accepts `league=all`. Entry and admin write bodies include `league` and also default to NHL for older clients. `/api/me` and `/api/entry` require Clerk sessions. `/api/picks` is public after the actual entry deadline. Final-score rows expand to show compact matchups with team logos, confidence beside the selected team, green correct-pick rows, and darker incorrect-pick rows; finalized weeks hide the separate Entries in section. All `/api/admin/*` operations require the configured admin account. Game IDs in picks are internal IDs; `sourceId` holds the league feed's game ID. Game and entry models use camelCase; NFL weeks add `weekNumber` and `opensAt`, and combined standings add `nflPoints`. Existing listing/public-pick response fields retain their SQL-style names for compatibility.
+The browser uses `/api/week`, `/api/weeks`, `/api/open-leagues`, `/api/entrants`, `/api/standings`, and `/api/season` for public data. `/api/open-leagues` returns league IDs with released, entry-accepting slates for the tab indicators. Other endpoints accept `league=nhl|pwhl|nfl|cfl` and default to NHL for existing links; `/api/season` also accepts `league=all`. Entry and admin write bodies include `league` and also default to NHL for older clients. `/api/me` and `/api/entry` require Clerk sessions. `/api/picks` is public after the actual entry deadline. Final-score rows expand to show compact matchups with team logos, confidence beside the selected team, green correct-pick rows, and darker incorrect-pick rows; finalized weeks hide the separate Entries in section. All `/api/admin/*` operations require the configured admin account. Game IDs in picks are internal IDs; `sourceId` holds the league feed's game ID. Game and entry models use camelCase; NFL weeks add `weekNumber` and `opensAt`, and combined standings add `nflPoints`. Existing listing/public-pick response fields retain their SQL-style names for compatibility.
 
 ## Formatting and verification
 
@@ -128,12 +154,12 @@ Individual checks: `npm run format:check`, `npm run typecheck`, `npm test`, and 
 
 Worker tests run the real migrations and queries in an in-memory SQLite database through a small D1 adapter. Clerk and league network calls are mocked, so tests do not require credentials or mutate a deployed database. They cover entry replacement and opening/deadline triggers, pick privacy, admin authorization, league isolation, migration preservation, schedule exclusions and overrides, NFL week timing and ties, result syncing, combined totals, and repeatable finalization. They do not replace checking the real Clerk flow in a configured local environment.
 
-After UI changes, check desktop and mobile layouts, switch leagues, select and swap confidence numbers, submit and reload NHL/NFL preview entries, switch open/locked/final states, and visit Standings, Season, and About. Check the PWHL coming-soon state, NFL past-week/offseason states, and three-league combined season filter. Verify guest pick visibility after signing out. Keep responsive CSS in source order: later rules may intentionally refine an earlier breakpoint.
+After UI changes, check desktop and mobile layouts, switch leagues, select and swap confidence numbers, submit and reload NHL/NFL/CFL preview entries, switch open/locked/final states, and visit Standings, Season, and About. Check the PWHL coming-soon state, NFL past-week/offseason states, and four-league combined season filter. Verify guest pick visibility after signing out. Keep responsive CSS in source order: later rules may intentionally refine an earlier breakpoint.
 
 ## Transactional email
 
 Email Settings (`/email-settings`) is available to signed-in users. Each account has separate NHL,
-PWHL, and NFL pick-reminder and recap switches; all six default on for new accounts.
+PWHL, NFL, and CFL pick-reminder and recap switches; all eight default on for new accounts.
 Migration `0014_email_defaults_on.sql` enables all six
 once for existing accounts; subsequent saved opt-outs persist through sign-ins and webhook updates.
 The cron refreshes up to 25 older players missing email account state from Clerk per run, using
@@ -144,7 +170,7 @@ in entrant or standings responses. Preview settings use browser-local
 
 - Welcome: once for accounts created at or after `EMAIL_LAUNCH_AT`, after primary-email verification.
   Explains confidence picks and deadlines, and that play is free with no betting, money, or prizes.
-- Reminders: 9 a.m. America/New_York on Friday for NHL/PWHL and Thursday for NFL, for subscribers
+- Reminders: 9 a.m. America/New_York on Friday for NHL/PWHL and Thursday for NFL/CFL, for subscribers
   who need a complete entry while a nonempty slate is open. A delayed cron can catch up later that
   same day; delivery always rechecks the entry and deadline.
   After four successfully sent reminders without a complete entry, reminders pause for that
@@ -270,6 +296,21 @@ The npm package is `weekend-pools`, but the following compatibility identifiers 
 The rebrand changes no API contracts, pool rules, data, or schema and requires no database migration. Browser storage belongs to each origin, so it does not transfer to the new hostname. The intro may reappear and users may need to sign in again; saved server entries remain attached to the same Clerk user IDs.
 
 Before an authorized deployment, run the checks, apply any new D1 migrations to the remote database, and build with `VITE_CLERK_PUBLISHABLE_KEY` set to the production publishable key. Deploy with `npx wrangler deploy`. `public/.assetsignore` excludes Finder metadata from published assets. Build output lives under `dist/client` and `dist/weekend_hockey_pool`; it is generated and should not be edited or committed. Keep previously applied migrations unchanged; add a new numbered migration for schema changes.
+
+### CFL production deployment — October 12, 2026
+
+Worker version `3a96e57d-0e55-4d15-a455-94b4583a75f9` deploys CFL official-week pools.
+Remote D1 migration `0015_cfl.sql` is applied, with no pending migrations. Aggregate checks
+confirmed that all existing league email preferences were preserved and the new CFL reminder
+and recap preferences were enabled for active accounts. The production Clerk publishable key,
+bindings, domains, cron, and email activation cutoff `2026-09-30T15:47:59.333Z` were retained.
+
+Node 24 checks passed all 168 tests, including API conformance, and the production build.
+The live CFL page and logo, all four league week endpoints, combined standings with `cflPoints`,
+and native authentication rejection were verified. The live CFL page correctly shows Tuesday
+opening: the first eligible new pool opens October 13 at 8 a.m. Eastern, with no historical
+backfill. Completed Clerk sign-in and authenticated account writes were not repeated in production;
+local preview verification covered saving/reloading and CFL email switches.
 
 ### Clean page URLs deployment — October 5, 2026
 

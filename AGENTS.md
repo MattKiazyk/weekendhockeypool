@@ -9,18 +9,18 @@ Weekly Pools is a React/Vite frontend with a Cloudflare Worker, D1, and Clerk. T
 - Keep `public/sitemap.xml` limited to canonical public page URLs and advertise it in `public/robots.txt`. Exclude admin, email settings, API paths, legacy links, and league/week query variants. `src/App.tsx` renders the current view's canonical link into the document head through React; keep it consistent with the sitemap.
 - Keep public Privacy Policy and Terms of Service content in `src/components/LegalPage.tsx`, legal footer links and attribution in `src/components/SiteFooter.tsx`, and shared in-app anchors in `src/components/ViewLink.tsx`. Legal pages are accessible to guests and stay out of the main navigation. Keep privacy copy consistent with private account/email persistence, deadline-based pick visibility, and the existing Google Analytics tag; contact is `matt@weeklypools.ca`.
 - Keep Clerk sign-in return URLs and same-page reload handling in `src/lib/auth-navigation.ts`, wired through `src/main.tsx`. Completed sign-in/sign-up must return to the selected league, week, and view and refresh account data automatically.
-- Keep the Picks and Standings week buttons in `src/components/WeekendNav.tsx`. Hockey uses weekend dates, labeling the current Eastern-time weekend “This weekend” with its date range below; NFL uses official week numbers. Season shows the current season; Admin uses its own date input.
+- Keep the Picks and Standings week buttons in `src/components/WeekendNav.tsx`. Hockey uses weekend dates, labeling the current Eastern-time weekend “This weekend” with its date range below; NFL and CFL use official week numbers. Season shows the current season; Admin uses its own date input.
 - Keep the first-visit Picks guide and its browser-local dismissal in `src/components/PicksIntro.tsx`; keep it mounted across navigation so dismissal also works when storage is blocked.
 - Keep About’s public instructional examples in `src/components/AboutExample.tsx`, using the real matchup and standings components with labeled sample data and local-only interactions.
 - Put domain types and pure rules in `src/lib/pool.ts`; both browser and Worker import it. Keep it free of React, browser APIs, and Cloudflare bindings.
-- Keep supported league IDs and display metadata in `src/lib/leagues.ts`. Each new league needs a Worker feed adapter registered in `worker/feeds.ts`. NFL feed normalization and official-week discovery belong in `worker/nfl.ts`.
+- Keep supported league IDs and display metadata in `src/lib/leagues.ts`. Each new league needs a Worker feed adapter registered in `worker/feeds.ts`. NFL feed normalization and official-week discovery belong in `worker/nfl.ts`; CFL equivalents belong in `worker/cfl.ts`.
 - Keep league-tab availability loading in `src/hooks/usePool.ts`, the released/open-week check in `worker/api.ts`, and its compact indicator in `src/components/LeagueTabs.tsx`. The indicator must use entry opening and deadline rules, not a status label alone.
 - Keep official team-record feed parsing in each league's Worker adapter, daily snapshot scheduling in `worker/sync.ts`, and Picks display in `src/components/Matchup.tsx`. Snapshots belong to a league and pick week and freeze at its entry deadline.
 - Keep email settings loading/saving in `src/hooks/usePool.ts`, settings UI in `src/components/EmailSettings.tsx`, and shared preference types in `src/lib/email.ts`. Keep private email account/preference persistence and atomic recap snapshots in `worker/email/store.ts`, Clerk webhook verification in `webhook.ts`, HTML/plain-text templates in `templates.ts`, and scheduling/delivery in `delivery.ts`. Email addresses must never enter public pool responses.
 - Keep demo fixtures/storage in `src/lib/demo.ts` and render preview and live data through the same components. Preview is development-only and must never write to the API.
 - Reuse the request helpers in `src/lib/api.ts`, date formatting in `src/lib/format.ts`, and view metadata in `src/lib/views.ts`.
 - Keep Standings’ make-picks prompt in `src/components/Results.tsx`, using the selected week’s open state and saved picks. Deadline labels use the Eastern Monday–Sunday calendar week: weekday only for this week, date for other weeks, and the correct EST/EDT abbreviation.
-- Keep Worker lifecycle handlers in `worker/index.ts`, routing in `api.ts`/`admin.ts`, Clerk verification in `auth.ts`, persistence helpers in `db.ts`, feed mapping in `nhl.ts`, `pwhl.ts`, and `nfl.ts`, adapter selection in `feeds.ts`, syncing in `sync.ts`, and finalization in `standings.ts`.
+- Keep Worker lifecycle handlers in `worker/index.ts`, routing in `api.ts`/`admin.ts`, Clerk verification in `auth.ts`, persistence helpers in `db.ts`, feed mapping in `nhl.ts`, `pwhl.ts`, `nfl.ts`, and `cfl.ts`, adapter selection in `feeds.ts`, syncing in `sync.ts`, and finalization in `standings.ts`.
 - Keep native v1 routing, rate limits, and player-handler delegation in `worker/native/api.ts`, approvals and device-key persistence in `worker/native/store.ts`, and bounded parsing/secure errors in `worker/native/http.ts`. Native login uses the existing Clerk instance and explicit bearer tokens; website cookies do not authenticate native requests. Ordinary reads require an approved user's key; personal requests also require the matching Clerk session. Keys are never embedded shared app secrets.
 - Treat `docs/api/openapi.yaml` as the canonical API contract. Every API change must update this file and relevant route/response conformance tests. Run `npm run api:check` (also included in `npm run check`). Keep website `/api` responses compatible and native routes isolated to the API host, with local development support. Never return raw unexpected exceptions or log credentials, request bodies, or private email addresses.
 - Use `upsertGame` for schedule/manual game writes and `saveEntry` for atomic entry replacement. Preserve existing API response field names unless deliberately migrating both sides.
@@ -62,3 +62,23 @@ For UI changes, verify picks, confidence swapping, saving/reloading, open/locked
 Do not modify applied migrations, generated build files, dependency directories, credential files, or unrelated user changes. Add new numbered migrations when needed. Keep `.env.example` and `.dev.vars.example` as placeholders; never put a Clerk secret in a `VITE_` variable. Deployment and remote database changes require an explicit request.
 
 Update this file and the README whenever module ownership, setup, commands, or pool behavior changes.
+
+## CFL maintenance
+
+- CFL uses `https://echo.pims.cfl.ca/api`, discovering season IDs and fetching all fixture pages
+  with bounded pagination. Only `game_type_id: 1` games qualify; official feed weeks own membership,
+  including Monday games. Offset-aware `start_at` owns kickoffs. Unknown statuses or missing final
+  scores remain pending; ties, cancellations/postponements, and moves to another official week are void.
+- CFL shares NFL's numbered-week release behavior: Tuesday 8 a.m. Eastern opening, Thursday
+  9 a.m. Eastern reminders, and first-kickoff lock. Week 1 anchors to the preceding/inclusive Thursday;
+  subsequent keys advance seven days per official week number. Persisted CFL weeks fix the season
+  anchor, even if the feed changes Week 1 dates. Never backfill pools after their first kickoff.
+- The whole CFL calendar-year season uses that year's shared pool season: CFL 2026, including June,
+  belongs to `2026-27`. Standalone CFL labels show 2026. Combined totals include `cflPoints` and
+  CFL-only entrants. Preserve `nflOffseason`; CFL responses additionally expose `cflOffseason`.
+- CFL email defaults are initialized by migration 0015 without resetting other league opt-outs.
+  Older three-league email-settings requests preserve saved CFL preferences. CFL reminder fatigue,
+  complete-entry resets, recap snapshots, and delivery eligibility use the existing shared pipeline.
+- Keep common NFL/CFL presentation rules in the small helpers in `src/lib/leagues.ts`. Preview CFL
+  fixtures live in `src/demo-cfl-schedule.json` and use `hockey-pool-demo-entry-cfl`; they never send
+  mail or write to the API. Verify provider terms and deployed Worker feed access before rollout.

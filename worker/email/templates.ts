@@ -1,3 +1,4 @@
+import { usesNumberedWeeks } from '../../src/lib/leagues'
 import { formatDay, formatDeadline } from '../../src/lib/format'
 import { leagueLabel } from '../../src/lib/leagues'
 import type { LeagueId, Weekend } from '../../src/lib/pool'
@@ -30,8 +31,8 @@ export function escapeHtml(value: string): string {
 export function weekTitle(
   week: Pick<Weekend, 'league' | 'startDate' | 'weekNumber' | 'season'>,
 ): string {
-  return week.league === 'nfl'
-    ? `NFL ${week.season.slice(0, 4)} · Week ${week.weekNumber}`
+  return usesNumberedWeeks(week.league)
+    ? `${week.league.toUpperCase()} ${week.season.slice(0, 4)} · Week ${week.weekNumber}`
     : `${leagueLabel(week.league)} · Weekend of ${formatDay(week.startDate)}, ${week.startDate.slice(0, 4)}`
 }
 export function weekLink(league: LeagueId, start: string, view: 'picks' | 'standings'): string {
@@ -57,12 +58,12 @@ export function welcomeEmail(username: string | null): EmailContent {
     'Assign a confidence number from 1 to the number of games to each game. You can only use each number once. Put your biggest number on the pick you feel best about.',
     'If your pick wins, you earn points equal to its confidence number. Incorrect picks and void games earn zero.',
     'Save your complete entry before the first game starts. That first-game deadline locks all picks for the week.',
-    'NHL and PWHL pools cover Friday–Sunday games and open Monday at 8 a.m. Eastern. NFL pools follow official regular-season weeks and open Tuesday at 8 a.m. Eastern. Each league has its own entry and standings.',
+    'NHL and PWHL pools cover Friday–Sunday games and open Monday at 8 a.m. Eastern. NFL and CFL pools follow official regular-season weeks and open Tuesday at 8 a.m. Eastern. Each league has its own entry and standings.',
   ]
   return wrap(
     'Welcome to Weekly Pools!',
-    `<h1 style="font-size:26px">${escapeHtml(greeting)}</h1><p>${escapeHtml(copy)}</p><ol>${rules.map((rule) => `<li style="margin-bottom:12px">${escapeHtml(rule)}</li>`).join('')}</ol><p>Ready to make your calls? ${link(viewUrl('picks', site), 'Visit My Picks')} or ${link(viewUrl('about', site), 'read the playbook')}.</p><p>Want weekly reminders and recaps? They start off. Choose your leagues in ${link(settingsUrl, 'Email Settings')}.</p>`,
-    `${greeting}\n\n${copy}\n\n${rules.map((rule, i) => `${i + 1}. ${rule}`).join('\n')}\n\nMy Picks: ${viewUrl('picks', site)}\nPlaybook: ${viewUrl('about', site)}\nOptional reminders and recaps start off.`,
+    `<h1 style="font-size:26px">${escapeHtml(greeting)}</h1><p>${escapeHtml(copy)}</p><ol>${rules.map((rule) => `<li style="margin-bottom:12px">${escapeHtml(rule)}</li>`).join('')}</ol><p>Ready to make your calls? ${link(viewUrl('picks', site), 'Visit My Picks')} or ${link(viewUrl('about', site), 'read the playbook')}.</p><p>Want weekly reminders and recaps? They start on. Choose your leagues in ${link(settingsUrl, 'Email Settings')}.</p>`,
+    `${greeting}\n\n${copy}\n\n${rules.map((rule, i) => `${i + 1}. ${rule}`).join('\n')}\n\nMy Picks: ${viewUrl('picks', site)}\nPlaybook: ${viewUrl('about', site)}\nOptional reminders and recaps start on; change your leagues in Email Settings.`,
     true,
   )
 }

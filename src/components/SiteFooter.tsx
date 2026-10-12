@@ -12,7 +12,7 @@ export default function SiteFooter({
     <footer className="site-footer">
       <span>WEEKLY POOLS</span>
       <span>WEEKLY CONFIDENCE POOLS</span>
-      <span>NHL, PWHL, and NFL schedules and scores · Eastern time</span>
+      <span>NHL, PWHL, NFL, and CFL schedules and scores · Eastern time</span>
       <nav className="footer-links" aria-label="Legal information">
         <ViewLink view="privacy" current={view === 'privacy'} onNavigate={onNavigate}>
           Privacy Policy
@@ -22,8 +22,8 @@ export default function SiteFooter({
         </ViewLink>
       </nav>
       <span className="footer-disclaimer">
-        For fun only · No real money involved · Not affiliated with or endorsed by the NHL, PWHL, or
-        NFL
+        For fun only · No real money involved · Not affiliated with or endorsed by the NHL, PWHL,
+        NFL, or CFL
       </span>
       <span className="footer-disclaimer">
         PWHL statistics provided by the Professional Women’s Hockey League ·{' '}
@@ -32,6 +32,9 @@ export default function SiteFooter({
         </a>
       </span>
       <span className="footer-disclaimer">NFL schedule and scores provided by ESPN.</span>
+      <span className="footer-disclaimer">
+        CFL schedule and scores provided by the Canadian Football League.
+      </span>
     </footer>
   )
 }

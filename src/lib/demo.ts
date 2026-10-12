@@ -1,6 +1,8 @@
-import { defaultEmailPreferences, isEmailPreferences } from './email'
+import { defaultEmailPreferences, isEmailPreferencesInput } from './email'
 import schedule from '../demo-schedule.json'
 import nflSchedule from '../demo-nfl-schedule.json'
+import cflSchedule from '../demo-cfl-schedule.json'
+import { usesNumberedWeeks } from './leagues'
 import { emptyPool, type PoolData } from './api'
 import {
   addDays,
@@ -17,6 +19,7 @@ import {
 
 const demoWeek = schedule as Weekend
 const demoNflWeek = nflSchedule as Weekend
+const demoCflWeek = cflSchedule as Weekend
 const demoStarts = [-14, -7, 0, 7, 14].map((days) => addDays(demoWeek.startDate, days))
 const storageKey = 'hockey-pool-demo-entry'
 const nflStorageKey = 'hockey-pool-demo-entry-nfl'
@@ -49,12 +52,14 @@ function demoWeekFor(startDate: string): Weekend {
 
 function selectedDemoWeek(league: LeagueId, startDate?: string | null): Weekend {
   if (league === 'nfl') return demoNflWeek
+  if (league === 'cfl') return demoCflWeek
   const selected = startDate && demoStarts.includes(startDate) ? startDate : demoWeek.startDate
   return demoWeekFor(selected)
 }
 
 function demoStorageKey(league: LeagueId, startDate?: string | null): string {
   if (league === 'nfl') return nflStorageKey
+  if (league === 'cfl') return 'hockey-pool-demo-entry-cfl'
   const selected = selectedDemoWeek(league, startDate).startDate
   return selected === demoWeek.startDate ? storageKey : `${storageKey}-${selected}`
 }
@@ -91,30 +96,39 @@ export function getDemoData(
   selectedWeek: string | null,
 ): PoolData {
   const seasonStandings = rankScores([
-    { username: 'blue_line', points: 684, correct: 61 },
-    { username: 'north_end', points: 648, correct: 58 },
-    { username: username ?? 'rinkside_77', points: 612, correct: 56 },
-    { username: 'hat_trick', points: 571, correct: 50 },
+    { username: 'blue_line', points: league === 'cfl' ? 124 : 684, correct: 61 },
+    { username: 'north_end', points: league === 'cfl' ? 118 : 648, correct: 58 },
+    { username: username ?? 'rinkside_77', points: league === 'cfl' ? 112 : 612, correct: 56 },
+    { username: 'hat_trick', points: league === 'cfl' ? 101 : 571, correct: 50 },
   ])
   const combinedStandings = seasonStandings.map((row) => ({
     ...row,
     nhlPoints: league === 'nhl' ? row.points : null,
     pwhlPoints: null,
     nflPoints: league === 'nfl' ? row.points : null,
+    cflPoints: league === 'cfl' ? row.points : null,
   }))
   if (league === 'pwhl') return { ...emptyPool, combinedStandings }
 
-  const nflHistory = [
+  const footballWeek = league === 'cfl' ? demoCflWeek : demoNflWeek
+  const footballHistory = [
     {
-      league: 'nfl' as const,
-      start_date: demoNflWeek.startDate,
-      season: demoNflWeek.season,
-      week_number: demoNflWeek.weekNumber,
+      league,
+      start_date: footballWeek.startDate,
+      season: footballWeek.season,
+      week_number: footballWeek.weekNumber,
       status: 'final' as const,
     },
   ]
-  if (league === 'nfl' && stage === 'offseason' && !selectedWeek)
-    return { ...emptyPool, nflOffseason: true, weeks: nflHistory, combinedStandings }
+  if (usesNumberedWeeks(league) && stage === 'offseason' && !selectedWeek)
+    return {
+      ...emptyPool,
+      nflOffseason: league === 'nfl',
+      cflOffseason: league === 'cfl',
+      weeks: footballHistory,
+      seasonStandings,
+      combinedStandings,
+    }
 
   const sample = selectedDemoWeek(league, selectedWeek)
   const currentEntry = entry && !validatePicks(entry.picks, sample.games).length ? entry : null
@@ -125,7 +139,9 @@ export function getDemoData(
   const records = new Map(
     teamCodes.map((code, index) => [
       code,
-      league === 'nfl' ? `${(index % 4) + 1}-${index % 3}-0` : `${(index % 5) + 2}-${index % 3}-1`,
+      usesNumberedWeeks(league)
+        ? `${(index % 4) + 1}-${index % 3}-0`
+        : `${(index % 5) + 2}-${index % 3}-1`,
     ]),
   )
   const gamesWithRecords = sample.games.map((game) => ({
@@ -138,8 +154,8 @@ export function getDemoData(
       ? gamesWithRecords.map((game, index) => ({
           ...game,
           state: 'final' as const,
-          awayScore: index % 3 === 0 ? 4 : 2,
-          homeScore: index % 3 === 0 ? 2 : 4,
+          awayScore: index % 3 === 0 ? (league === 'cfl' ? 27 : 4) : league === 'cfl' ? 21 : 2,
+          homeScore: index % 3 === 0 ? (league === 'cfl' ? 21 : 2) : league === 'cfl' ? 27 : 4,
           winner: index % 3 === 0 ? ('away' as const) : ('home' as const),
         }))
       : gamesWithRecords
@@ -169,16 +185,15 @@ export function getDemoData(
   return {
     ...emptyPool,
     week: { ...sample, status: shownStage === 'upcoming' ? 'open' : shownStage, games },
-    weeks:
-      league === 'nfl'
-        ? nflHistory
-        : demoStarts.map((start_date) => ({
-            league,
-            start_date,
-            season: sample.season,
-            week_number: null,
-            status: 'open' as const,
-          })),
+    weeks: usesNumberedWeeks(league)
+      ? footballHistory
+      : demoStarts.map((start_date) => ({
+          league,
+          start_date,
+          season: sample.season,
+          week_number: null,
+          status: 'open' as const,
+        })),
     entry: currentEntry,
     publicPicks,
     entrants: [...new Set([...players, ...(currentEntry && username ? [username] : [])])].sort(
@@ -187,12 +202,28 @@ export function getDemoData(
     standings:
       shownStage === 'final'
         ? rankScores([
-            { username: 'blue_line', points: 146, correct: 13 },
-            { username: 'north_end', points: 131, correct: 12 },
+            ...(league === 'cfl'
+              ? players.map((name) => ({
+                  username: name,
+                  ...scoreEntry(
+                    publicPicks
+                      .filter((pick) => pick.username === name)
+                      .map((pick) => ({
+                        gameId: pick.game_id,
+                        side: pick.side,
+                        confidence: pick.confidence,
+                      })),
+                    games,
+                  ),
+                }))
+              : [
+                  { username: 'blue_line', points: 146, correct: 13 },
+                  { username: 'north_end', points: 131, correct: 12 },
+                  { username: 'hat_trick', points: 97, correct: 9 },
+                ]),
             ...(currentEntry && username
               ? [{ username, ...scoreEntry(currentEntry.picks, games) }]
               : []),
-            { username: 'hat_trick', points: 97, correct: 9 },
           ])
         : [],
     seasonStandings,
@@ -209,7 +240,7 @@ export function readDemoEmailSettings(): import('./email').EmailSettings {
   }
   try {
     const saved: unknown = JSON.parse(localStorage.getItem(emailStorageKey) ?? 'null')
-    if (isEmailPreferences(saved)) settings.preferences = saved
+    if (isEmailPreferencesInput(saved)) settings.preferences = { ...settings.preferences, ...saved }
   } catch {
     /* Preview also works when storage is unavailable. */
   }

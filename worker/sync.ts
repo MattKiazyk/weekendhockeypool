@@ -1,3 +1,5 @@
+import { cflWeekContext } from './cfl'
+import { usesNumberedWeeks } from '../src/lib/leagues'
 import {
   addDays,
   easternDate,
@@ -22,7 +24,11 @@ export function syncSchedule(
   league: 'nhl' | 'pwhl',
   start: string,
 ): Promise<Weekend>
-export function syncSchedule(db: D1Database, league: 'nfl', start: string): Promise<Weekend | null>
+export function syncSchedule(
+  db: D1Database,
+  league: 'nfl' | 'cfl',
+  start: string,
+): Promise<Weekend | null>
 export function syncSchedule(
   db: D1Database,
   league: LeagueId,
@@ -35,8 +41,8 @@ export async function syncSchedule(
 ): Promise<Weekend | null> {
   const existing = await getWeek(db, league, start)
   if (existing && existing.status !== 'open') return existing
-  const { games: eligible, season, weekNumber, opensAt } = await feedFor(league).schedule(start)
-  if (league === 'nfl' && !existing) {
+  const { games: eligible, season, weekNumber, opensAt } = await feedFor(league, db).schedule(start)
+  if (usesNumberedWeeks(league) && !existing) {
     const firstKickoff = lockTime(eligible)
     if (!firstKickoff || Date.now() >= Date.parse(firstKickoff)) return null
   }
@@ -182,7 +188,7 @@ export async function scheduled(env: Env): Promise<void> {
   const current = weekendStartAt(runAt)
   const next = addDays(current, 7)
   const dailyRefresh = new Date().getUTCHours() === 12 && new Date().getUTCMinutes() < 15
-  for (const { id: league } of leagues.filter((item) => item.id !== 'nfl')) {
+  for (const { id: league } of leagues.filter((item) => !usesNumberedWeeks(item.id))) {
     for (const start of [current, next]) {
       const week = await getWeek(env.DB, league, start)
       if (!week || (week.status === 'open' && dailyRefresh)) {
@@ -194,18 +200,21 @@ export async function scheduled(env: Env): Promise<void> {
       }
     }
   }
-  try {
-    const nfl = await nflWeekContext()
-    for (const selected of [nfl.active, nfl.next]) {
-      if (!selected) continue
-      const future = Date.parse(selected.opensAt) > Date.now()
-      if (future && Date.parse(selected.opensAt) - Date.now() > 7 * 24 * 60 * 60 * 1000) continue
-      const week = await getWeek(env.DB, 'nfl', selected.startDate)
-      if (!week || (week.status === 'open' && (!future || dailyRefresh)))
-        await syncSchedule(env.DB, 'nfl', selected.startDate)
+  for (const league of ['nfl', 'cfl'] as const) {
+    try {
+      const context =
+        league === 'cfl' ? await cflWeekContext(runAt, env.DB) : await nflWeekContext(runAt)
+      for (const selected of [context.active, context.next]) {
+        if (!selected) continue
+        const future = Date.parse(selected.opensAt) > runAt
+        if (future && Date.parse(selected.opensAt) - runAt > 7 * 24 * 60 * 60 * 1000) continue
+        const week = await getWeek(env.DB, league, selected.startDate)
+        if (!week || (week.status === 'open' && (!future || dailyRefresh)))
+          await syncSchedule(env.DB, league, selected.startDate)
+      }
+    } catch {
+      console.error(`${league.toUpperCase()} schedule sync failed`)
     }
-  } catch (cause) {
-    console.error('NFL schedule sync failed', cause)
   }
   if (recordRefreshDue(runAt)) {
     const rows = await env.DB.prepare(

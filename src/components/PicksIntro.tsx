@@ -1,3 +1,4 @@
+import { usesNumberedWeeks } from '../lib/leagues'
 import { useState } from 'react'
 import type { LeagueId } from '../lib/pool'
 
@@ -110,7 +111,9 @@ export default function PicksIntro({
         <div className="picks-intro-footer">
           <p>
             <span aria-hidden="true">◷</span>{' '}
-            <strong>Picks open {league === 'nfl' ? 'Tuesday' : 'Monday'} at 8 a.m. Eastern.</strong>{' '}
+            <strong>
+              Picks open {usesNumberedWeeks(league) ? 'Tuesday' : 'Monday'} at 8 a.m. Eastern.
+            </strong>{' '}
             Sign in and save before the first game.
           </p>
           <button type="button" className="picks-intro-rules" onClick={onAbout}>

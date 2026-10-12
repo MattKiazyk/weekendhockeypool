@@ -139,7 +139,7 @@ function TermsOfService({ onNavigate }: Pick<LegalPageProps, 'onNavigate'>) {
         <p>
           Weekly Pools offers sports confidence pools for entertainment. There are no entry fees,
           wagers, real-money betting, or prizes. Points and rankings have no monetary value. Weekly
-          Pools is not affiliated with or endorsed by the NHL, PWHL, NFL, or their teams.
+          Pools is not affiliated with or endorsed by the NHL, PWHL, NFL, CFL, or their teams.
         </p>
       </section>
       <section>

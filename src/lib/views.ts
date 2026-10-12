@@ -1,3 +1,4 @@
+import { isLeague, usesNumberedWeeks } from './leagues'
 export const views = [
   { id: 'picks', label: 'My Picks', kicker: '01 / MAKE YOUR CALL', title: 'THE PICK SHEET' },
   {
@@ -36,5 +37,5 @@ export function selectedStartFromUrl(): string | null {
   const date = new Date(`${start}T12:00:00Z`)
   if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== start) return null
   const league = new URLSearchParams(window.location.search).get('league')
-  return date.getUTCDay() === (league === 'nfl' ? 4 : 5) ? start : null
+  return date.getUTCDay() === (isLeague(league) && usesNumberedWeeks(league) ? 4 : 5) ? start : null
 }

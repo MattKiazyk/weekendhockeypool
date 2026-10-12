@@ -3,7 +3,7 @@ import { nativeAuth } from '../auth'
 import { json } from '../http'
 import type { Env, Player } from '../types'
 import { isLeague, leagues } from '../../src/lib/leagues'
-import { isEmailPreferences } from '../../src/lib/email'
+import { isEmailPreferencesInput } from '../../src/lib/email'
 import { ApiFailure, failureResponse, readBody, secureResponse } from './http'
 import {
   approved,
@@ -117,7 +117,7 @@ function validateBody(path: string, body: Record<string, unknown>) {
     )
       throw new ApiFailure(400, 'invalid_request', 'Invalid entry body')
   } else if (path === '/v1/email-settings') {
-    if (!isEmailPreferences(body))
+    if (!isEmailPreferencesInput(body))
       throw new ApiFailure(
         400,
         'invalid_request',

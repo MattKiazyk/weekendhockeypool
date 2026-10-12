@@ -37,3 +37,9 @@ describe('page URLs', () => {
     expect(viewFromUrl(new URL(path, 'https://weeklypools.ca'))).toBe('picks')
   })
 })
+
+it('keeps CFL numbered-week links through view navigation', () => {
+  const url = new URL(viewUrl('standings', 'https://weeklypools.ca/?league=cfl&start=2026-06-04'))
+  expect(url.pathname).toBe('/standings')
+  expect(url.search).toBe('?league=cfl&start=2026-06-04')
+})

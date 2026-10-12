@@ -1,10 +1,5 @@
-import {
-  easternDate,
-  seasonFor,
-  type LeagueId,
-  type Weekend,
-  type WeekendStatus,
-} from '../lib/pool'
+import { usesNumberedWeeks, leagueSeasonFor } from '../lib/leagues'
+import { easternDate, type LeagueId, type Weekend, type WeekendStatus } from '../lib/pool'
 import { formatDeadline, formatSlateDeadline, formatSlateDates, formatTime } from '../lib/format'
 
 export default function WeekHero({
@@ -24,20 +19,20 @@ export default function WeekHero({
 }) {
   const count = week?.games.length ?? 0
   const deadline = week?.lockAt ? formatSlateDeadline(week.lockAt) : null
-  const nfl = league === 'nfl'
+  const numbered = usesNumberedWeeks(league)
   const gameDates = week?.games.map((game) => game.easternDate).sort() ?? []
   const title = seasonOnly
-    ? nfl
+    ? numbered
       ? `${(season ?? week?.season ?? '').slice(0, 4)} SEASON`
       : `${(season ?? week?.season ?? '').replace('-', '–')} SEASON`
     : week
-      ? nfl && gameDates.length
+      ? numbered && gameDates.length
         ? formatSlateDates(gameDates[0], gameDates[gameDates.length - 1])
         : formatSlateDates(week.startDate)
-      : nfl
+      : numbered
         ? offseason
-          ? 'NFL OFFSEASON'
-          : 'NEXT NFL WEEK'
+          ? `${league.toUpperCase()} OFFSEASON`
+          : `NEXT ${league.toUpperCase()} WEEK`
         : 'NEXT WEEKEND'
   return (
     <section className="hero slate-hero">
@@ -46,30 +41,33 @@ export default function WeekHero({
         <div className="eyebrow">
           <span className="live-dot" /> {league.toUpperCase()} REGULAR SEASON{' '}
           <span className="eyebrow-divider">/</span>{' '}
-          {nfl
-            ? (season ?? week?.season ?? seasonFor(easternDate(Date.now()))).slice(0, 4)
-            : (season ?? week?.season ?? seasonFor(easternDate(Date.now())))}
+          {numbered
+            ? (season ?? week?.season ?? leagueSeasonFor(league, easternDate(Date.now()))).slice(
+                0,
+                4,
+              )
+            : (season ?? week?.season ?? leagueSeasonFor(league, easternDate(Date.now())))}
         </div>
         <div className="slate-summary">
           <div className="slate-date">
             <span className="slate-label">
               {seasonOnly
                 ? 'SEASON STANDINGS'
-                : nfl
+                : numbered
                   ? week?.weekNumber
-                    ? `NFL WEEK ${week.weekNumber} · OFFICIAL SLATE`
-                    : 'NFL WEEKLY POOL'
+                    ? `${league.toUpperCase()} WEEK ${week.weekNumber} · OFFICIAL SLATE`
+                    : `${league.toUpperCase()} WEEKLY POOL`
                   : 'FRIDAY–SUNDAY · WEEKEND SLATE'}
             </span>
             <h1>{title}</h1>
           </div>
-          {!seasonOnly && (!nfl || week) && (
+          {!seasonOnly && (!numbered || week) && (
             <div className="slate-stat">
               <strong>{count}</strong>
               <span>GAMES</span>
             </div>
           )}
-          {!seasonOnly && (!nfl || week) && (
+          {!seasonOnly && (!numbered || week) && (
             <div className="slate-stat slate-deadline">
               <strong>
                 {status === 'final' ? (
@@ -91,14 +89,14 @@ export default function WeekHero({
                 {status === 'final'
                   ? 'RESULTS'
                   : status === 'upcoming'
-                    ? `PICKS OPEN ${nfl ? 'TUESDAY' : 'MONDAY'}`
+                    ? `PICKS OPEN ${numbered ? 'TUESDAY' : 'MONDAY'}`
                     : 'ENTRY DEADLINE'}
               </span>
             </div>
           )}
         </div>
       </div>
-      {!seasonOnly && (!nfl || week) && (
+      {!seasonOnly && (!numbered || week) && (
         <div className="hero-number" aria-hidden="true">
           {String(count).padStart(2, '0')}
         </div>

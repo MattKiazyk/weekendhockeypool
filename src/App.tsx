@@ -1,3 +1,4 @@
+import { usesNumberedWeeks, leagueSeasonFor } from './lib/leagues'
 import { useEffect, useState } from 'react'
 import About from './About'
 import EmailSettingsPage from './components/EmailSettings'
@@ -20,7 +21,6 @@ import {
   hasEntryDeadlinePassed,
   isEntryOpen,
   easternDate,
-  seasonFor,
   updatePick,
   validatePicks,
   weekendStartAt,
@@ -55,6 +55,7 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
     entrants,
     publicPicks,
     nflOffseason,
+    cflOffseason,
     openLeagues,
     loading,
     error,
@@ -102,20 +103,31 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
   }, [league, selectedWeek, session.userId])
 
   const currentWeekend = weekendStartAt(pool.clock)
-  const currentSeason = seasonFor(currentWeekend)
+  const currentSeason = leagueSeasonFor(
+    league,
+    league === 'cfl' ? easternDate(pool.clock) : currentWeekend,
+  )
+  const offseason = league === 'cfl' ? cflOffseason : nflOffseason
   let shownWeek: Weekend | null = view === 'season' ? null : week
   if (
     !shownWeek &&
     (view === 'season' ||
-      (view === 'admin' && session.isAdmin && (league !== 'nfl' || weeks.length)))
+      (view === 'admin' && session.isAdmin && (!usesNumberedWeeks(league) || weeks.length)))
   ) {
     const startDate =
       (view === 'season' ? null : selectedWeek) ??
-      (league === 'nfl' ? (weeks[0]?.start_date ?? easternDate(Date.now())) : currentWeekend)
+      (usesNumberedWeeks(league)
+        ? (weeks[0]?.start_date ?? easternDate(Date.now()))
+        : currentWeekend)
     shownWeek = {
       league,
       startDate,
-      season: league === 'nfl' && weeks[0] ? weeks[0].season : seasonFor(startDate),
+      season:
+        view === 'season'
+          ? currentSeason
+          : usesNumberedWeeks(league) && weeks[0]
+            ? weeks[0].season
+            : leagueSeasonFor(league, startDate),
       weekNumber: null,
       opensAt: entryOpensAt(startDate),
       lockAt: null,
@@ -163,7 +175,7 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
     else url.searchParams.set('league', next)
     window.history.pushState(null, '', url)
     setSelectedWeek(null)
-    if (stage === 'offseason' || (stage === 'upcoming' && next === 'nfl')) setStage('open')
+    if (stage === 'offseason' || (stage === 'upcoming' && usesNumberedWeeks(next))) setStage('open')
     setSeasonScope('league')
     setLeague(next)
     window.scrollTo({ top: 0, behavior: 'auto' })
@@ -225,8 +237,8 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
             <b>LOCAL DESIGN PREVIEW</b> ·{' '}
             {league === 'nhl'
               ? 'Sample NHL schedule'
-              : league === 'nfl'
-                ? 'Sample NFL week'
+              : usesNumberedWeeks(league)
+                ? `Sample ${league.toUpperCase()} week`
                 : 'PWHL coming-soon preview'}{' '}
             · Picks stay in this browser
           </span>
@@ -234,11 +246,11 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
             <span>View state</span>
             {(
               [
-                ...(league === 'nfl' ? [] : ['upcoming']),
+                ...(usesNumberedWeeks(league) ? [] : ['upcoming']),
                 'open',
                 'locked',
                 'final',
-                ...(league === 'nfl' ? ['offseason'] : []),
+                ...(usesNumberedWeeks(league) ? ['offseason'] : []),
               ] as DemoStage[]
             ).map((item) => (
               <button
@@ -279,7 +291,7 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
               status={displayStatus}
               season={view === 'season' ? currentSeason : undefined}
               seasonOnly={view === 'season'}
-              offseason={nflOffseason}
+              offseason={offseason}
             />
             <div className="content-wrap">
               {error && (
@@ -300,10 +312,14 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
                   activeStart={
                     selectedWeek ??
                     week?.startDate ??
-                    (league === 'nfl' ? (weeks[0]?.start_date ?? currentWeekend) : currentWeekend)
+                    (usesNumberedWeeks(league)
+                      ? (weeks[0]?.start_date ?? currentWeekend)
+                      : currentWeekend)
                   }
                   onChange={(start) =>
-                    changeWeek(league !== 'nfl' && start === currentWeekend ? null : start)
+                    changeWeek(
+                      !usesNumberedWeeks(league) && start === currentWeekend ? null : start,
+                    )
                   }
                 />
               )}
@@ -314,26 +330,26 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
                 <div className="empty-state large">
                   <span className="empty-icon">◇</span>
                   <h2>
-                    {league === 'nfl'
-                      ? nflOffseason
-                        ? 'NFL IS IN THE OFFSEASON'
-                        : 'NFL PICKS OPEN TUESDAY'
+                    {usesNumberedWeeks(league)
+                      ? offseason
+                        ? `${league.toUpperCase()} IS IN THE OFFSEASON`
+                        : `${league.toUpperCase()} PICKS OPEN TUESDAY`
                       : league === 'pwhl' && !weeks.length
                         ? 'PWHL IS COMING THIS SEASON'
                         : 'No regular-season games on this weekend'}
                   </h2>
                   <p>
-                    {league === 'nfl'
-                      ? nflOffseason
-                        ? `The next NFL regular-season pool will appear when its first week opens.${weeks.length ? ' Choose a past week to see results.' : ''}`
-                        : `The next NFL pick sheet opens Tuesday at 8 a.m. Eastern.${weeks.length ? ' Choose a past week to see results.' : ''}`
+                    {usesNumberedWeeks(league)
+                      ? offseason
+                        ? `The next ${league.toUpperCase()} regular-season pool will appear when its first week opens.${weeks.length ? ' Choose a past week to see results.' : ''}`
+                        : `The next ${league.toUpperCase()} pick sheet opens Tuesday at 8 a.m. Eastern.${weeks.length ? ' Choose a past week to see results.' : ''}`
                       : league === 'pwhl' && !weeks.length
                         ? 'PWHL picks will open when the first regular-season weekend is scheduled.'
                         : `Try another ${league.toUpperCase()} weekend when games are scheduled.`}
                   </p>
-                  {league === 'nfl' && weeks.length > 0 && (
+                  {usesNumberedWeeks(league) && weeks.length > 0 && (
                     <select
-                      aria-label="Choose NFL week"
+                      aria-label={`Choose ${league.toUpperCase()} week`}
                       value={selectedWeek ?? ''}
                       onChange={(event) => changeWeek(event.target.value || null)}
                     >
@@ -360,7 +376,7 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
                           {displayStatus === 'open'
                             ? 'ENTRIES OPEN'
                             : displayStatus === 'upcoming'
-                              ? `OPENS ${league === 'nfl' ? 'TUE' : 'MON'} 8 AM ET`
+                              ? `OPENS ${usesNumberedWeeks(league) ? 'TUE' : 'MON'} 8 AM ET`
                               : displayStatus === 'locked'
                                 ? 'PICKS LOCKED'
                                 : demo

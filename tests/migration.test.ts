@@ -174,3 +174,43 @@ it('enables existing email preferences once and initializes new accounts without
     sqlite.close()
   }
 })
+
+it('adds CFL defaults without resetting existing opt-outs or queuing historical email', () => {
+  const sqlite = new DatabaseSync(':memory:')
+  try {
+    for (const file of readdirSync('migrations')
+      .filter((file) => file.endsWith('.sql') && file < '0015')
+      .sort()) {
+      sqlite.exec(readFileSync(`migrations/${file}`, 'utf8'))
+    }
+    sqlite.exec(`INSERT INTO email_accounts (clerk_id, created_at, source_updated_at)
+      VALUES ('existing', '2020-01-01T00:00:00Z', 0);
+      UPDATE email_preferences SET enabled=0, enabled_at=NULL WHERE clerk_id='existing';`)
+    sqlite.exec(readFileSync('migrations/0015_cfl.sql', 'utf8'))
+    expect(
+      sqlite
+        .prepare(
+          "SELECT COUNT(*) AS n FROM email_preferences WHERE clerk_id='existing' AND league!='cfl' AND enabled=1",
+        )
+        .get()?.n,
+    ).toBe(0)
+    expect(
+      sqlite
+        .prepare(
+          "SELECT COUNT(*) AS n FROM email_preferences WHERE clerk_id='existing' AND league='cfl' AND enabled=1 AND enabled_at IS NOT NULL",
+        )
+        .get()?.n,
+    ).toBe(2)
+    sqlite.exec(
+      "INSERT INTO email_accounts (clerk_id, created_at, source_updated_at) VALUES ('new', '2099-01-01T00:00:00Z', 0)",
+    )
+    expect(
+      sqlite.prepare("SELECT SUM(enabled) AS n FROM email_preferences WHERE clerk_id='new'").get()
+        ?.n,
+    ).toBe(8)
+    expect(sqlite.prepare('SELECT COUNT(*) AS n FROM email_jobs').get()?.n).toBe(0)
+    expect(sqlite.prepare('PRAGMA foreign_key_check').all()).toEqual([])
+  } finally {
+    sqlite.close()
+  }
+})

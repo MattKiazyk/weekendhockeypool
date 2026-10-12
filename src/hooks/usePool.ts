@@ -1,3 +1,4 @@
+import { usesNumberedWeeks, leagueSeasonFor } from '../lib/leagues'
 import { defaultEmailPreferences, type EmailSettings, type EmailPreferences } from '../lib/email'
 import { selectedStartFromUrl } from '../lib/views'
 import { useEffect, useRef, useState } from 'react'
@@ -15,7 +16,6 @@ import {
   easternDate,
   easternTimeAt,
   hasEntryDeadlinePassed,
-  seasonFor,
   weekendStartAt,
   type CombinedStanding,
   type Entry,
@@ -46,7 +46,7 @@ export function usePool(
   const [clock, setClock] = useState(Date.now)
   const currentWeekend = weekendStartAt(clock)
   const [liveOpenLeagues, setLiveOpenLeagues] = useState<LeagueId[]>([])
-  const seenNflRelease = useRef<string | null>(null)
+  const seenFootballRelease = useRef<string | null>(null)
 
   useEffect(() => {
     const timer = window.setInterval(() => setClock(Date.now()), 15000)
@@ -77,8 +77,8 @@ export function usePool(
   }, [demo, league, loading, reloadKey])
 
   useEffect(() => {
-    if (demo || league !== 'nfl' || selectedWeek) {
-      seenNflRelease.current = null
+    if (demo || !usesNumberedWeeks(league) || selectedWeek) {
+      seenFootballRelease.current = null
       return
     }
     const today = easternDate(clock)
@@ -87,9 +87,9 @@ export function usePool(
     const currentRelease = easternTimeAt(tuesday, 8)
     const marker =
       clock >= Date.parse(currentRelease) ? currentRelease : easternTimeAt(addDays(tuesday, -7), 8)
-    if (seenNflRelease.current && seenNflRelease.current !== marker)
+    if (seenFootballRelease.current && seenFootballRelease.current !== marker)
       setReloadKey((value) => value + 1)
-    seenNflRelease.current = marker
+    seenFootballRelease.current = marker
   }, [clock, demo, league, selectedWeek])
 
   useEffect(() => {
@@ -112,8 +112,8 @@ export function usePool(
       setDraft([])
       try {
         const suffix = `?league=${league}${selectedWeek ? `&start=${selectedWeek}` : ''}`
-        const [{ week, nflOffseason }, token] = await Promise.all([
-          fetchJson<{ week: Weekend | null; nflOffseason: boolean }>(
+        const [{ week, nflOffseason, cflOffseason }, token] = await Promise.all([
+          fetchJson<{ week: Weekend | null; nflOffseason: boolean; cflOffseason: boolean }>(
             `/api/week${suffix}`,
             null,
             options,
@@ -130,7 +130,10 @@ export function usePool(
         const seasonId =
           week?.season ??
           (league === 'nfl' ? weeks[0]?.season : null) ??
-          seasonFor(selectedWeek ?? currentWeekend)
+          leagueSeasonFor(
+            league,
+            selectedWeek ?? (league === 'cfl' ? easternDate(Date.now()) : currentWeekend),
+          )
         const seasonRequest = fetchJson<{ standings: Standing[] }>(
           `/api/season?league=${league}&season=${seasonId}`,
           null,
@@ -147,6 +150,7 @@ export function usePool(
           setData({
             ...emptyPool,
             nflOffseason,
+            cflOffseason,
             weeks,
             seasonStandings: season.standings,
             combinedStandings: combined.standings,
@@ -185,6 +189,7 @@ export function usePool(
         setData({
           week,
           nflOffseason,
+          cflOffseason,
           weeks,
           standings,
           seasonStandings: season.standings,
@@ -283,7 +288,11 @@ export function usePool(
 
   return {
     ...visibleData,
-    openLeagues: demo ? (stage === 'open' ? (['nhl', 'nfl'] as LeagueId[]) : []) : liveOpenLeagues,
+    openLeagues: demo
+      ? stage === 'open'
+        ? (['nhl', 'nfl', 'cfl'] as LeagueId[])
+        : []
+      : liveOpenLeagues,
     draft,
     setDraft,
     selectedWeek,

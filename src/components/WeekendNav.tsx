@@ -1,3 +1,4 @@
+import { usesNumberedWeeks } from '../lib/leagues'
 import { formatDay, formatSlateDates } from '../lib/format'
 import type { LeagueId, WeekListing } from '../lib/pool'
 
@@ -34,12 +35,14 @@ function DateButtons({
   return (
     <nav
       className={`weekend-nav ${className}`}
-      aria-label={league === 'nfl' ? 'Choose NFL week' : 'Choose weekend'}
+      aria-label={
+        usesNumberedWeeks(league) ? `Choose ${league.toUpperCase()} week` : 'Choose weekend'
+      }
     >
       <button
         type="button"
         className="weekend-step"
-        aria-label={`Previous available ${league === 'nfl' ? 'NFL week' : 'weekend'}`}
+        aria-label={`Previous available ${usesNumberedWeeks(league) ? `${league.toUpperCase()} week` : 'weekend'}`}
         disabled={activeIndex === 0}
         onClick={() => onChange(dates[activeIndex - 1])}
       >
@@ -47,7 +50,7 @@ function DateButtons({
       </button>
       <div className="weekend-dates">
         {visible.map((start) => {
-          const thisWeekend = league !== 'nfl' && start === currentStart
+          const thisWeekend = !usesNumberedWeeks(league) && start === currentStart
           return (
             <button
               key={start}
@@ -55,14 +58,14 @@ function DateButtons({
               className={`weekend-date ${start === activeStart ? 'active' : ''} ${thisWeekend ? 'current-weekend' : ''}`}
               aria-current={start === activeStart ? 'date' : undefined}
               aria-label={
-                league === 'nfl'
-                  ? `NFL ${start.slice(0, 4)} week ${weekNumbers.get(start)}`
+                usesNumberedWeeks(league)
+                  ? `${league.toUpperCase()} ${start.slice(0, 4)} week ${weekNumbers.get(start)}`
                   : `${thisWeekend ? 'This weekend,' : 'Weekend of'} ${formatDay(start)}, ${start.slice(0, 4)}`
               }
               onClick={() => onChange(start)}
             >
               <span>
-                {league === 'nfl'
+                {usesNumberedWeeks(league)
                   ? `WEEK ${weekNumbers.get(start)}`
                   : thisWeekend
                     ? 'THIS WEEKEND'
@@ -76,7 +79,7 @@ function DateButtons({
       <button
         type="button"
         className="weekend-step"
-        aria-label={`Next available ${league === 'nfl' ? 'NFL week' : 'weekend'}`}
+        aria-label={`Next available ${usesNumberedWeeks(league) ? `${league.toUpperCase()} week` : 'weekend'}`}
         disabled={activeIndex === dates.length - 1}
         onClick={() => onChange(dates[activeIndex + 1])}
       >

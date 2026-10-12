@@ -79,7 +79,7 @@ async function slate(league: LeagueId = 'nhl', date = start) {
     .prepare(
       "INSERT INTO weekends (league, start_date, season, opens_at, week_number) VALUES (?, ?, '2099-00', '2000-01-01T00:00:00.000Z', ?)",
     )
-    .bind(league, date, league === 'nfl' ? 5 : null)
+    .bind(league, date, league === 'nfl' || league === 'cfl' ? 5 : null)
     .run()
   const games = [1, 2].map((id) =>
     gameFromNhl({
@@ -408,7 +408,7 @@ describe('email schedules and standings snapshots', () => {
     await processEmails(env, morning)
     expect(count('reminder')).toBe(0)
   })
-  it('schedules NFL on Thursday and PWHL on Friday with separate league jobs', async () => {
+  it('schedules NFL/CFL on Thursday and PWHL on Friday with separate league jobs', async () => {
     const thursday = addDays(start, -1)
     vi.setSystemTime(Date.parse(easternTimeAt(thursday, 9)))
     await subscribe(account, 'reminder', 'nfl')
@@ -416,12 +416,17 @@ describe('email schedules and standings snapshots', () => {
     await processEmails(env, Date.parse(easternTimeAt(thursday, 9)))
     expect(send).toHaveBeenCalledOnce()
     expect(send.mock.calls[0][0].subject).toContain('Week 5')
+    await subscribe(account, 'reminder', 'cfl')
+    await slate('cfl', thursday)
+    await processEmails(env, Date.parse(easternTimeAt(thursday, 9)))
+    expect(send).toHaveBeenCalledTimes(2)
+    expect(send.mock.calls[1][0].subject).toContain('CFL 2099 · Week 5')
     vi.setSystemTime(morning)
     await subscribe(account, 'reminder', 'pwhl')
     await slate('pwhl')
     await processEmails(env, morning)
-    expect(send).toHaveBeenCalledTimes(2)
-    expect(send.mock.calls[1][0].subject).toContain('PWHL')
+    expect(send).toHaveBeenCalledTimes(3)
+    expect(send.mock.calls[2][0].subject).toContain('PWHL')
   })
   it('atomically snapshots recap recipients and standings; excludes later opt-ins and never resends corrections', async () => {
     await subscribe(account, 'recap')
@@ -648,4 +653,85 @@ describe('safe email delivery and templates', () => {
       recapEmail({ title: 'NHL', standings: [] }, 'invalid', true, 'nhl', start).text,
     ).toContain('incomplete at lock')
   })
+})
+
+it('preserves CFL opt-outs when an older website client saves three-league preferences', async () => {
+  await subscribe()
+  const before = (await readSettings(database.db, account.userId)).preferences
+  before.cfl = { reminder: false, recap: true }
+  await saveSettings(database.db, account.userId, before)
+  const { cfl: omitted, ...legacy } = emptyEmailPreferences()
+  expect(omitted.reminder).toBe(false)
+  legacy.nfl.reminder = true
+  database.sqlite.exec(
+    "CREATE TRIGGER reject_cfl_preference_update BEFORE UPDATE ON email_preferences WHEN NEW.league='cfl' BEGIN SELECT RAISE(ABORT, 'CFL must stay untouched'); END",
+  )
+  const response = await api(
+    new Request('https://pool.example/api/email-settings', {
+      method: 'PUT',
+      body: JSON.stringify(legacy),
+      headers: { 'content-type': 'application/json' },
+    }),
+    env,
+  )
+  expect(response.status).toBe(200)
+  expect(((await response.json()) as { preferences: unknown }).preferences).toEqual({
+    ...legacy,
+    cfl: before.cfl,
+  })
+})
+
+it('pauses CFL reminders after four sends, resets for a complete entry, and snapshots its recap once', async () => {
+  const thursday = addDays(start, -1)
+  await subscribe(account, 'reminder', 'cfl')
+  await savePlayer(env.DB, { userId: account.userId, username: account.username })
+  for (let i = 0; i < 4; i++) {
+    const date = addDays(thursday, i * 7)
+    vi.setSystemTime(Date.parse(easternTimeAt(date, 9)))
+    await slate('cfl', date)
+    await processEmails(env)
+  }
+  expect(send).toHaveBeenCalledTimes(4)
+  const date = addDays(thursday, 28)
+  vi.setSystemTime(Date.parse(easternTimeAt(date, 9)))
+  const week = await slate('cfl', date)
+  await processEmails(env)
+  expect(send).toHaveBeenCalledTimes(4)
+  const engagement = () =>
+    database.sqlite
+      .prepare("SELECT * FROM email_reminder_engagement WHERE clerk_id=? AND league='cfl'")
+      .get(account.userId)!
+  expect(engagement().sent_without_entry).toBe(4)
+  await saveEntry(
+    env.DB,
+    'cfl',
+    date,
+    account.userId,
+    week.games.map((game, i) => ({ gameId: game.id, side: 'away', confidence: i + 1 })),
+  )
+  expect(engagement().sent_without_entry).toBe(0)
+  expect(engagement().suppressed_at).toBeNull()
+  const preferences = emptyEmailPreferences()
+  preferences.cfl.recap = true
+  await saveSettings(env.DB, account.userId, preferences, Date.now() - 60_000)
+  await env.DB.prepare(
+    "UPDATE games SET state='final', winner='away' WHERE league='cfl' AND weekend_start=?",
+  )
+    .bind(date)
+    .run()
+  const finalized = Date.parse(easternTimeAt(addDays(date, 4), 2))
+  vi.setSystemTime(finalized)
+  await finalize(env.DB, 'cfl', date)
+  expect(count('recap')).toBe(1)
+  await env.DB.prepare("UPDATE games SET winner='home' WHERE league='cfl' AND weekend_start=?")
+    .bind(date)
+    .run()
+  await finalize(env.DB, 'cfl', date)
+  expect(count('recap')).toBe(1)
+  await processEmails(env, Date.parse(nextMorning(finalized)))
+  expect(send).toHaveBeenCalledTimes(5)
+  expect(send.mock.calls[4][0].subject).toContain('CFL 2099 · Week 5')
+  expect(send.mock.calls[4][0].text).toContain('3 points')
+  await processEmails(env, Date.parse(nextMorning(finalized)) + 60_000)
+  expect(send).toHaveBeenCalledTimes(5)
 })
