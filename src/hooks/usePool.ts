@@ -173,7 +173,7 @@ export function usePool(
                 options,
               )
             : { entry: null },
-          token && hasEntryDeadlinePassed(week)
+          hasEntryDeadlinePassed(week)
             ? fetchJson<{ picks: PublicPick[] }>(
                 `/api/picks?league=${league}&start=${week.startDate}`,
                 token,

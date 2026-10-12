@@ -459,7 +459,7 @@ paths:
           description:
             'Eastern pool-week start date: Friday for hockey, Thursday for NFL. NFL weekNumber is
             official ESPN week assignment.'
-      description: Returns 403 before the actual deadline, regardless of status labels.
+      description: Website /api/picks allows guests after the deadline; this native route requires both credentials. Returns 403 before the actual deadline, regardless of status labels.
   /email-settings:
     get:
       summary: Caller private verified email state and preferences

@@ -2815,35 +2815,78 @@ a {
 }
 .entrant-pick {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 190px) 44px;
+  grid-template-columns: minmax(0, 1fr) 88px minmax(0, 1fr);
   align-items: center;
-  gap: 13px;
-  padding: 10px 0;
+  gap: 8px;
+  padding: 9px 10px;
   border-bottom: 1px solid #29415d;
   color: #8fa8c7;
-  font-size: 11px;
+  font-size: 12px;
 }
 .entrant-pick:last-child {
   border-bottom: 0;
 }
-.entrant-pick b {
+.entrant-pick.incorrect {
+  background: #091320;
+}
+.entrant-pick.incorrect .entry-team,
+.entrant-pick.incorrect .entry-score {
+  opacity: 0.65;
+}
+.entry-team {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.entry-team.home {
+  justify-content: flex-end;
+}
+.entry-team.selected {
   color: #eaf3ff;
-  font-size: 11px;
-  text-align: right;
+  font-weight: 800;
+}
+.entry-team img,
+.entry-logo-fallback {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.entry-logo-fallback {
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+  background: #253b57;
+  border-radius: 50%;
+}
+.entry-score {
+  text-align: center;
+  font-weight: 700;
+}
+.entry-score small {
+  display: block;
+  margin-top: 2px;
+  font-size: 9px;
+  font-weight: 400;
 }
 .entrant-pick em {
   display: grid;
   place-items: center;
-  width: 37px;
-  height: 33px;
+  min-width: 23px;
+  height: 24px;
+  padding: 0 3px;
   border: 1px solid #b28a2b;
   border-radius: 3px;
   background: #342a17;
   color: #ffce5a;
   font-family: 'Barlow Condensed', Impact, sans-serif;
-  font-size: 20px;
+  font-size: 17px;
   font-style: normal;
   font-weight: 900;
+}
+.entrant-pick.correct {
+  background: #142c27;
 }
 .entrant-picks > p {
   margin: 14px 0;
@@ -2876,23 +2919,27 @@ a {
     font-size: 8px;
     padding: 5px;
   }
+  .entrant-picks {
+    padding: 4px 6px 10px;
+  }
   .entrant-pick {
-    grid-template-columns: minmax(0, 1fr) 42px;
-    gap: 2px;
-    padding: 10px 0;
+    grid-template-columns: minmax(0, 1fr) 62px minmax(0, 1fr);
+    gap: 4px;
+    padding: 8px 5px;
+    font-size: 11px;
   }
-  .entrant-pick span {
-    grid-column: 1;
-    grid-row: 1;
+  .entry-team {
+    gap: 4px;
   }
-  .entrant-pick b {
-    grid-column: 1;
-    grid-row: 2;
-    text-align: left;
+  .entry-team img,
+  .entry-logo-fallback {
+    width: 23px;
+    height: 23px;
   }
   .entrant-pick em {
-    grid-column: 2;
-    grid-row: 1 / span 2;
+    min-width: 19px;
+    height: 22px;
+    font-size: 15px;
   }
 }
 
@@ -3300,4 +3347,20 @@ a {
   clip-path: inset(50%);
   white-space: nowrap;
   border: 0;
+}
+
+.standing-entry summary {
+  cursor: pointer;
+  list-style: none;
+}
+.standing-entry summary::-webkit-details-marker {
+  display: none;
+}
+.standing-entry summary:hover,
+.standing-entry[open] summary {
+  background: #152840;
+}
+.standing-entry summary:focus-visible {
+  outline: 2px solid #f5c542;
+  outline-offset: -2px;
 }

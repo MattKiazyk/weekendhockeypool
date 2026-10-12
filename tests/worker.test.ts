@@ -120,7 +120,7 @@ describe('entry persistence and visibility', () => {
     expect(await (await request(`entry?start=${start}`)).json()).toEqual({ entry: saved })
   })
 
-  it('lists entrants before lock but reveals picks only after the deadline to signed-in users', async () => {
+  it('lists entrants before lock but reveals picks to guests only after the actual deadline', async () => {
     await saveEntry(database.db, 'nhl', start, user.userId, picks)
     expect(await (await request(`entrants?start=${start}`)).json()).toEqual({
       entrants: ['rinkside'],
@@ -131,7 +131,16 @@ describe('entry persistence and visibility', () => {
     expect(response.status).toBe(200)
     expect(((await response.json()) as { picks: unknown[] }).picks).toHaveLength(2)
     vi.mocked(auth).mockResolvedValue(null)
-    expect((await request(`picks?start=${start}`)).status).toBe(401)
+    const guest = await request(`picks?start=${start}`)
+    expect(guest.status).toBe(200)
+    expect(await guest.json()).toEqual({
+      picks: [
+        { username: 'rinkside', game_id: 1, side: 'away', confidence: 2 },
+        { username: 'rinkside', game_id: 2, side: 'home', confidence: 1 },
+      ],
+    })
+    database.sqlite.exec("UPDATE weekends SET status='final', lock_at='2099-12-31T23:00:00Z'")
+    expect((await request(`picks?start=${start}`)).status).toBe(403)
   })
 
   it('returns validation details and never stores an incomplete or malformed entry', async () => {

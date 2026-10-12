@@ -41,9 +41,8 @@ function PrivacyPolicy({ onNavigate }: Pick<LegalPageProps, 'onNavigate'>) {
         <p>
           Your username is public in entry lists and standings. Your team selections and confidence
           numbers are hidden from other players until that pool week’s entry deadline passes; after
-          that, signed-in players can view them. Standings, including usernames and scores, may also
-          appear in recap emails. Your email address is private and is not included in public pool
-          responses.
+          that, anyone can view them. Standings, including usernames and scores, may also appear in
+          recap emails. Your email address is private and is not included in public pool responses.
         </p>
       </section>
       <section>

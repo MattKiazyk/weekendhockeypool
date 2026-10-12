@@ -254,8 +254,6 @@ export async function api(request: Request, env: Env, verifiedUser?: Player): Pr
     }
   }
   if (path === '/api/picks' && request.method === 'GET') {
-    const user = verifiedUser ?? (await auth(request, env))
-    if (!user) return error('Sign in to view players’ picks', 401)
     if (!validStart(start, league)) return error('Invalid weekend date', 400)
     const week = await getWeek(env.DB, league, start)
     if (!week || !hasEntryDeadlinePassed(week))

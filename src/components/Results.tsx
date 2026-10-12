@@ -73,22 +73,28 @@ export function WeekendResults({
           </h3>
           <p>
             {displayStatus === 'final'
-              ? 'Every result is in. See how your confidence picks stacked up.'
+              ? 'Every result is in. Tap a player’s row to see their confidence picks.'
               : picksUnlocked
                 ? 'Open a player’s entry to see their picks. Rankings arrive when every game is final or void.'
                 : 'Submitted usernames appear here right away. Picks stay hidden until the entry deadline passes, and rankings arrive after the final game.'}
           </p>
         </div>
         {displayStatus === 'final' && (
-          <StandingsList rows={standings} emptyText="No completed entries for this week." />
+          <StandingsList
+            rows={standings}
+            emptyText="No completed entries for this week."
+            games={picksUnlocked ? games : undefined}
+            picks={picksUnlocked ? publicPicks : undefined}
+          />
         )}
-        <EntrantsBoard
-          usernames={entrants}
-          games={games}
-          picks={publicPicks}
-          unlocked={picksUnlocked}
-          canViewPicks={signedIn}
-        />
+        {displayStatus !== 'final' && (
+          <EntrantsBoard
+            usernames={entrants}
+            games={games}
+            picks={publicPicks}
+            unlocked={picksUnlocked}
+          />
+        )}
       </div>
       <aside className="results-aside">
         <span className="card-kicker">WEEK SNAPSHOT</span>

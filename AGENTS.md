@@ -32,7 +32,7 @@ Weekly Pools is a React/Vite frontend with a Cloudflare Worker, D1, and Clerk. T
 - A valid entry has every game exactly once and each confidence number 1–N exactly once. Confidence swaps preserve team selections.
 - The earliest retained game determines lock time. A manual game override must determine its own start time even if the NHL feed still reports a different time for that ID.
 - Enforce entry deadlines and each league's opening time in both application logic and database triggers. Preserve earlier entries and allow pre-opening schedule corrections. Do not bypass or remove the triggers when refactoring writes.
-- Public entrants contain usernames only. Revealed picks require authentication and `hasEntryDeadlinePassed`; a status label alone is insufficient.
+- Public entrants contain usernames only. Revealed website picks require `hasEntryDeadlinePassed`; a status label alone is insufficient.
 - Admin authorization is checked in `worker/api.ts` before dispatching to `admin.ts`. Client visibility checks are not authorization.
 - Frozen schedules cannot change. Feed refreshes must preserve manual overrides and exclusions and reject transient empty replacement slates.
 - Finalization requires at least one game, every game final/void, and a passed deadline. NFL ties and games moved to another official week are void. Incomplete entries are excluded, tied point totals share ranks, and recalculation replaces previous standings atomically. Combined season totals use only finalized league weeks and include players who entered any league. NFL season 2026 shares the `2026-27` pool season key with hockey, while NFL views display its season year and official week number.

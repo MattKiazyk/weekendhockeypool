@@ -144,15 +144,9 @@ export default function PickSheet({
             </section>
           )
         })}
-        {picksUnlocked && session.signedIn && (
+        {picksUnlocked && (
           <div className="other-picks">
-            <EntrantsBoard
-              usernames={entrants}
-              games={games}
-              picks={publicPicks}
-              unlocked
-              canViewPicks
-            />
+            <EntrantsBoard usernames={entrants} games={games} picks={publicPicks} unlocked />
           </div>
         )}
       </div>

@@ -136,9 +136,9 @@ function About({ demo, onPlay }: AboutProps) {
               </span>
               <h3>Can I see other picks?</h3>
               <p>
-                Only after the entry deadline passes can signed-in players see everyone’s picks.
-                Before then, only submitted usernames are visible. Guests can browse the schedule
-                and finished standings.
+                Only after the entry deadline passes can anyone see everyone’s picks. Before then,
+                only submitted usernames are visible. Guests can browse the schedule and finished
+                standings.
               </p>
             </article>
             <article>
@@ -179,8 +179,8 @@ function About({ demo, onPlay }: AboutProps) {
             </p>
             <p>
               Your username appears in the entries list as soon as you submit and later on results.
-              Your picks stay hidden until the entry deadline passes, when signed-in players can
-              view them. {demo && 'In this local preview, sample picks are saved in this browser.'}
+              Your picks stay hidden until the entry deadline passes, when anyone can view them.{' '}
+              {demo && 'In this local preview, sample picks are saved in this browser.'}
             </p>
           </div>
         </section>
