@@ -286,6 +286,15 @@ must remain isolated from the application's development preview and automated em
 
 `wrangler.jsonc` configures `weeklypools.ca` and the retained `pool.mattkiazyk.com` and `hockey.mattkiazyk.com` custom domains on the existing Worker, using the same D1 database and 15-minute cron. Configure matching Clerk production keys and the admin user on the Worker. Ensure Clerk allows the production origin.
 
+`www.weeklypools.ca` redirects to `https://weeklypools.ca` through a separate Cloudflare
+Single Redirect in the `weeklypools.ca` zone. Keep its proxied `A` record (`www` → `192.0.2.1`)
+and TLS coverage; the placeholder address is never used as an application origin. The
+**Weekly Pools www** rule matches `(http.host eq "www.weeklypools.ca")`, uses the dynamic
+target `concat("https://weeklypools.ca", http.request.uri.path)`, returns `308`, and enables
+**Preserve query string**. Both HTTP and HTTPS go directly to the canonical HTTPS domain,
+preserving clean page URLs and league/week selections. This DNS record and edge rule are
+managed outside Wrangler; `www` does not need a Worker deployment or separate Clerk origin.
+
 The npm package is `weekend-pools`, but the following compatibility identifiers intentionally retain their old names:
 
 - Worker: `weekend-hockey-pool`; keep its secrets, bindings, and single scheduled trigger.
@@ -296,6 +305,31 @@ The npm package is `weekend-pools`, but the following compatibility identifiers 
 The rebrand changes no API contracts, pool rules, data, or schema and requires no database migration. Browser storage belongs to each origin, so it does not transfer to the new hostname. The intro may reappear and users may need to sign in again; saved server entries remain attached to the same Clerk user IDs.
 
 Before an authorized deployment, run the checks, apply any new D1 migrations to the remote database, and build with `VITE_CLERK_PUBLISHABLE_KEY` set to the production publishable key. Deploy with `npx wrangler deploy`. `public/.assetsignore` excludes Finder metadata from published assets. Build output lives under `dist/client` and `dist/weekend_hockey_pool`; it is generated and should not be edited or committed. Keep previously applied migrations unchanged; add a new numbered migration for schema changes.
+
+### Google Search Console ownership — October 8, 2026
+
+The [weeklypools.ca Domain property](https://search.google.com/search-console?resource_id=sc-domain%3Aweeklypools.ca)
+is verified for the owner's `mattkiazyk@gmail.com` Google account. Domain verification covers
+HTTP, HTTPS, and all subdomains, including `www`. A new apex TXT record was added in Cloudflare:
+
+```text
+google-site-verification=ivz8LG78NmpDBsaRicYZhgykKJk9157vLz5fiJ4mXAw
+```
+
+Both authoritative nameservers and Google DNS served the record, and Search Console confirmed
+**Ownership verified** through the domain name provider. Keep this record to maintain ownership;
+the existing Google verification TXT and mail records were preserved. DNS is managed outside
+Wrangler. See [Google's ownership verification guide](https://support.google.com/webmasters/answer/9008080?hl=en).
+
+### WWW domain setup — October 8, 2026
+
+Added the missing proxied `www` DNS record and activated the **Weekly Pools www** Single
+Redirect. Authoritative DNS, Cloudflare DNS, and Google DNS resolve the hostname. Live HTTP
+and HTTPS checks confirmed one-hop 308 redirects for the root, Standings with league/week
+queries, API URLs, and assets. HTTPS certificate validation passed, and following the
+Standings redirect returned HTTP 200. Initial checks used the published DNS address while
+the local resolver still cached the previous NXDOMAIN response. No Worker deployment or
+database change was needed.
 
 ### CFL production deployment — October 12, 2026
 

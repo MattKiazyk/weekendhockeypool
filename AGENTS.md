@@ -26,6 +26,8 @@ Weekly Pools is a React/Vite frontend with a Cloudflare Worker, D1, and Clerk. T
 - Use `upsertGame` for schedule/manual game writes and `saveEntry` for atomic entry replacement. Preserve existing API response field names unless deliberately migrating both sides.
 - Use Weekly Pools for app branding and sport-neutral general copy; preserve accurate league names, attribution, and rules. Keep the existing logo and visual style.
 - Keep the internal Worker name `weekend-hockey-pool`, D1 name `hockey-pool` and ID, `DB` binding, and legacy browser-storage keys for compatibility. The old `pool.mattkiazyk.com` and `hockey.mattkiazyk.com` custom domains remain for a Cloudflare Single Redirect; their 308 rule is managed separately from Wrangler and enabled only after the new domain and real Clerk flow pass verification. Follow the README cutover procedure.
+- Keep `www.weeklypools.ca` as a proxied redirect-only DNS record in the `weeklypools.ca` zone. Its separate **Weekly Pools www** Single Redirect sends HTTP and HTTPS to the canonical domain with status 308, preserving paths and query strings. Do not add `www` as a Worker custom domain or a separate Clerk origin; maintain the DNS record, TLS coverage, and edge rule together.
+- Preserve the apex Google Search Console verification TXT record in Cloudflare, along with any existing Google verification records. The `weeklypools.ca` Domain property is verified through DNS; removing its record can revoke ownership. The verification record is managed outside Wrangler and does not require an application deployment.
 
 ## Invariants to preserve
 
