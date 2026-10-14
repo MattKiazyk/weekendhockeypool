@@ -331,6 +331,16 @@ Standings redirect returned HTTP 200. Initial checks used the published DNS addr
 the local resolver still cached the previous NXDOMAIN response. No Worker deployment or
 database change was needed.
 
+### CFL logo encoding fix — October 13, 2026
+
+Worker version `1dd86afc-6be3-480c-a203-50a6e89fdea3` preserves the Base64 marker when
+normalizing CFL SVG logo data URLs, including Edmonton's logo. Percent-encoded SVGs still
+receive the malformed-charset cleanup. Node 24 checks passed all 174 tests and API conformance;
+the production build retained the Clerk key and existing email activation settings. No migration
+was needed. A requested immediate repair restored the Base64 marker on saved Edmonton logos
+in unlocked feed matchups. The live browser confirmed the corrected image loaded successfully.
+Locked schedules remain frozen; future schedule refreshes preserve the encoding marker.
+
 ### CFL production deployment — October 12, 2026
 
 Worker version `3a96e57d-0e55-4d15-a455-94b4583a75f9` deploys CFL official-week pools.

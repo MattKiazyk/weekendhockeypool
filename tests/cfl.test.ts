@@ -138,6 +138,21 @@ it('discovers season IDs and includes official Monday games with offset-aware ti
   expect(leagueSeasonFor('nhl', '2026-06-04')).toBe('2025-26')
   expect(leagueSeasonFor('nfl', '2027-01-07')).toBe('2026-27')
 })
+it.each([
+  ['data:image/svg+xml;base64,PHN2Zy8+', 'data:image/svg+xml;base64,PHN2Zy8+'],
+  ['data:image/svg+xml;charset%3DUS-ASCII;base64,PHN2Zy8+', 'data:image/svg+xml;base64,PHN2Zy8+'],
+  ['data:image/svg+xml;charset%3DUS-ASCII,%3Csvg/%3E', 'data:image/svg+xml,%3Csvg/%3E'],
+])('preserves logo payload encoding while fixing feed headers: %s', async (logo, expected) => {
+  const feed = mockFeed()
+  vi.stubGlobal('fetch', async (input: string | URL) => {
+    if (new URL(String(input)).pathname === '/api/teams')
+      return Response.json(teams.map((team) => ({ ...team, logo_svg: logo })))
+    return feed(input)
+  })
+  const schedule = await getCflSchedule(start)
+  expect(schedule.games[0].home.logo).toBe(expected)
+  expect(schedule.games[0].away.logo).toBe(expected)
+})
 it('changes numbered weeks exactly Tuesday at 8 a.m. Eastern and ends after the last week', async () => {
   expect(await cflWeekContext(Date.parse('2026-06-02T11:59:59Z'))).toMatchObject({
     active: null,

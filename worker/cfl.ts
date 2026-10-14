@@ -192,6 +192,14 @@ async function teams(): Promise<Map<number, CflTeam>> {
   }
   return result
 }
+function cflLogo(logo: string | undefined): string | null {
+  // Fix malformed charset parameters without losing Base64 payload encoding.
+  return (
+    logo?.replace(/^data:image\/svg\+xml[^,]*,/i, (header) =>
+      /;base64,/i.test(header) ? 'data:image/svg+xml;base64,' : 'data:image/svg+xml,',
+    ) ?? null
+  )
+}
 function gameFromCfl(raw: CflFixture, byId: Map<number, CflTeam>): Game {
   function team(id: number | null) {
     const member = id ? byId.get(id) : null
@@ -199,7 +207,7 @@ function gameFromCfl(raw: CflFixture, byId: Map<number, CflTeam>): Game {
     return {
       code: member.abbreviation,
       name: `${member.region_label} ${member.name}`,
-      logo: member.logo_svg?.replace(/^data:image\/svg\+xml[^,]*,/, 'data:image/svg+xml,') ?? null,
+      logo: cflLogo(member.logo_svg),
     }
   }
   return {
