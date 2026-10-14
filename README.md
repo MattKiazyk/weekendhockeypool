@@ -308,6 +308,20 @@ The rebrand changes no API contracts, pool rules, data, or schema and requires n
 
 Before an authorized deployment, run the checks, apply any new D1 migrations to the remote database, and build with `VITE_CLERK_PUBLISHABLE_KEY` set to the production publishable key. Deploy with `npx wrangler deploy`. `public/.assetsignore` excludes Finder metadata from published assets. Build output lives under `dist/client` and `dist/weekend_hockey_pool`; it is generated and should not be edited or committed. Keep previously applied migrations unchanged; add a new numbered migration for schema changes.
 
+### Saved-picks invitations deployment — October 14, 2026
+
+Commit `b5feefe` adds the persistent saved-entry invite card and successful-save summary popup;
+commit `7ebd491` records the previously deployed CFL logo encoding fix. Both were pushed to
+`main`. Worker version `3ecb94a2-df9a-48b8-ba09-2ee3d4cf6499` deploys these changes with the
+existing production Clerk publishable key, bindings, domains, cron, and email activation cutoff
+`2026-09-30T15:47:59.333Z` retained. No database migration was needed.
+
+Node 24 checks passed all 180 tests, API conformance, and the production build. Desktop/mobile
+preview verified the summary popup, copy feedback, dismissal, saved-entry reloads, confidence
+swapping, and guest visibility. Production serves the new bundle, all four league week APIs
+respond successfully, and public page routes return HTTP 200. The live browser loaded the
+existing authenticated Clerk session; production pick writes and a fresh sign-in were not repeated.
+
 ### Google Search Console ownership — October 8, 2026
 
 The [weeklypools.ca Domain property](https://search.google.com/search-console?resource_id=sc-domain%3Aweeklypools.ca)
