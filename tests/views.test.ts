@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { viewFromUrl, viewUrl, views } from '../src/lib/views'
+import { poolInviteUrl, viewFromUrl, viewUrl, views } from '../src/lib/views'
 
 describe('page URLs', () => {
   const selected = 'https://weeklypools.ca/?league=nfl&start=2026-10-01'
@@ -43,3 +43,17 @@ it('keeps CFL numbered-week links through view navigation', () => {
   expect(url.pathname).toBe('/standings')
   expect(url.search).toBe('?league=cfl&start=2026-06-04')
 })
+
+it.each(['nhl', 'pwhl', 'nfl', 'cfl'] as const)(
+  'shares a canonical %s pick sheet with only its selected league and week',
+  (league) => {
+    const url = new URL(poolInviteUrl(league, '2026-10-16'))
+    expect(url.origin).toBe('https://weeklypools.ca')
+    expect(url.pathname).toBe('/')
+    expect([...url.searchParams.entries()]).toEqual([
+      ['league', league],
+      ['start', '2026-10-16'],
+    ])
+    expect(url.hash).toBe('')
+  },
+)

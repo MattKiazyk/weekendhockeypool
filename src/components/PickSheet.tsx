@@ -14,6 +14,8 @@ import type { SaveFeedback } from './SaveToast'
 import { formatDay } from '../lib/format'
 import Matchup from './Matchup'
 import { EntrantsBoard } from './Standings'
+import InviteCard from './InviteCard'
+import SubmissionDialog from './SubmissionDialog'
 
 interface PickSheetProps {
   week: Weekend
@@ -28,7 +30,7 @@ interface PickSheetProps {
   saving: boolean
   saveFeedback: SaveFeedback | null
   onPick: (pick: Pick) => void
-  onSave: () => Promise<void>
+  onSave: () => Promise<boolean>
   onMessage: (message: string) => void
   onError: (error: string) => void
 }
@@ -51,6 +53,7 @@ export default function PickSheet({
   onError,
 }: PickSheetProps) {
   const [alias, setAlias] = useState('')
+  const [showSubmission, setShowSubmission] = useState(false)
   const games = week.games
   const pickedCount = draft.filter((pick) => pick.confidence > 0).length
   const errors = validatePicks(draft, games)
@@ -68,6 +71,9 @@ export default function PickSheet({
     } catch (cause) {
       onError(cause instanceof Error ? cause.message : 'Could not set username')
     }
+  }
+  async function submit() {
+    if (await onSave()) setShowSubmission(true)
   }
   return (
     <div className="pick-layout">
@@ -180,7 +186,7 @@ export default function PickSheet({
               <button
                 className="save-button"
                 disabled={!session.signedIn || !session.username || !!errors.length || saving}
-                onClick={() => void onSave()}
+                onClick={() => void submit()}
               >
                 {saving ? 'Saving…' : entry ? 'Update my picks' : 'Submit my picks'} <span>→</span>
               </button>
@@ -209,6 +215,9 @@ export default function PickSheet({
               {entry ? 'Your entry is locked in.' : 'Entries are closed.'}
             </div>
           )}
+          {session.signedIn && entry && !validatePicks(entry.picks, games).length && (
+            <InviteCard key={`${week.league}:${week.startDate}:${open}`} week={week} open={open} />
+          )}
         </div>
         <div className="rules-card">
           <span className="card-kicker">HOW SCORING WORKS</span>
@@ -222,6 +231,9 @@ export default function PickSheet({
           <small>You can only use each number once. Highest weekly total takes the top spot.</small>
         </div>
       </aside>
+      {showSubmission && session.signedIn && (
+        <SubmissionDialog week={week} open={open} onDismiss={() => setShowSubmission(false)} />
+      )}
     </div>
   )
 }

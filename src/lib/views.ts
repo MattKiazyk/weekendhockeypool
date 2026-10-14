@@ -1,4 +1,5 @@
 import { isLeague, usesNumberedWeeks } from './leagues'
+import type { LeagueId } from './pool'
 export const views = [
   { id: 'picks', label: 'My Picks', kicker: '01 / MAKE YOUR CALL', title: 'THE PICK SHEET' },
   {
@@ -28,6 +29,13 @@ export function viewUrl(view: View, href = window.location.href): string {
   const url = new URL(href)
   url.pathname = view === 'picks' ? '/' : `/${view}`
   url.hash = ''
+  return url.href
+}
+
+export function poolInviteUrl(league: LeagueId, startDate: string): string {
+  const url = new URL(viewUrl('picks', 'https://weeklypools.ca'))
+  url.searchParams.set('league', league)
+  url.searchParams.set('start', startDate)
   return url.href
 }
 

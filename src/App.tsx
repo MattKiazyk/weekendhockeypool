@@ -191,7 +191,7 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
 
   async function saveEntry() {
     if (!shownWeek || !open || !session.signedIn || validatePicks(draft, shownWeek.games).length)
-      return
+      return false
     setSaving(true)
     setError('')
     setMessage('')
@@ -203,11 +203,13 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
         kind: 'success',
         text: 'Your picks are saved. You can update them until the deadline.',
       })
+      return true
     } catch (cause) {
       setSaveFeedback({
         kind: 'error',
         text: cause instanceof Error ? cause.message : 'Could not save picks',
       })
+      return false
     } finally {
       setSaving(false)
       setSaveToastVisible(true)
@@ -392,6 +394,7 @@ export default function App({ session, demo }: { session: PoolSession; demo: boo
                   </div>
                   {view === 'picks' && (
                     <PickSheet
+                      key={`${shownWeek.league}:${shownWeek.startDate}:${session.userId}`}
                       week={shownWeek}
                       session={session}
                       draft={draft}
